@@ -16,6 +16,7 @@ export function ParentSettings({ playerName, voiceOn, onSave, onReset }: Props) 
   const [holding, setHolding] = useState(false);
   const [name, setName] = useState(playerName);
   const [voice, setVoice] = useState(voiceOn);
+  const [confirmReset, setConfirmReset] = useState(false);
   const timer = useRef<number | undefined>(undefined);
 
   const startHold = () => {
@@ -24,6 +25,7 @@ export function ParentSettings({ playerName, voiceOn, onSave, onReset }: Props) 
       setHolding(false);
       setName(playerName);
       setVoice(voiceOn);
+      setConfirmReset(false);
       setOpen(true);
     }, 2000);
   };
@@ -63,16 +65,16 @@ export function ParentSettings({ playerName, voiceOn, onSave, onReset }: Props) 
               Progress is saved on this device only. Tip: on iPad, tap Share → "Add to Home Screen" to play full-screen.
             </p>
             <div className="settings-actions">
+              {/* Confirm in-page: browser confirm() dialogs are blocked in some embeds. */}
               <button
                 className="danger"
                 onClick={() => {
-                  if (window.confirm(`Erase all of ${playerName}'s stamps and badges?`)) {
-                    onReset();
-                    setOpen(false);
-                  }
+                  if (!confirmReset) return setConfirmReset(true);
+                  onReset();
+                  setOpen(false);
                 }}
               >
-                Reset progress
+                {confirmReset ? `Yes, erase ${playerName}'s stamps` : 'Reset progress'}
               </button>
               <button onClick={() => setOpen(false)}>Cancel</button>
               <button
