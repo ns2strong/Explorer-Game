@@ -1,0 +1,10 @@
+{
+  "name": "Ava's Big Adventure",
+  "short_name": "Ava's Adventure",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#8ecae6",
+  "theme_color": "#8ecae6",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
