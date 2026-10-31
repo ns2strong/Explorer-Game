@@ -26,7 +26,9 @@ export const L = {
   stopMission: 'Okay! Let’s just explore.',
   anotherMission: 'Want another mission? Tap the star!',
   badgeLocked: 'Keep exploring to earn this badge!',
-  stampEmpty: 'Find this state on the map to get the stamp!',
+  stampEmpty: 'Find this state on the map, then tap all three pictures to get the stamp!',
+  stampHint: 'Tap all three pictures to earn the stamp!',
+  stampEarned: 'Great listening, {name}! You earned the stamp!',
   idleHints: [
     'Tap a color on the map to go exploring, {name}!',
     'Want a mission? Tap the big star!',
@@ -47,7 +49,7 @@ export const L = {
 export function allLines(name: string): string[] {
   const out: string[] = [
     L.greetNew, L.welcomeBack, L.usa, L.home, L.stopMission, L.anotherMission,
-    L.badgeLocked, L.stampEmpty, ...L.idleHints,
+    L.badgeLocked, L.stampEmpty, L.stampHint, L.stampEarned, ...L.idleHints,
   ];
   for (const s of STATES) {
     out.push(L.stateFact(s), L.capital(s), L.wrongState(s));

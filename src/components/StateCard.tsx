@@ -9,22 +9,29 @@ import { Icon } from './Icon';
 
 interface Props {
   state: UsState;
-  /** True the first time Ava visits — shows the stamp animation. */
-  newStamp: boolean;
+  /** Picture facts (tile words) Ava has already heard for this state. */
+  heard: Set<string>;
+  /** The state's passport stamp is earned. */
+  stamped: boolean;
+  /** The stamp was earned just now: play the stamp animation. */
+  justStamped: boolean;
+  /** Ava tapped a picture: the app speaks it and tracks progress toward the stamp. */
+  onPick: (t: Thing) => void;
   onClose: () => void;
 }
 
-export function StateCard({ state, newStamp, onClose }: Props) {
+export function StateCard({ state, heard, stamped, justStamped, onPick, onClose }: Props) {
   const region = REGION_BY_ID[state.region];
   const shape = SHAPE_BY_FIPS[state.fips];
   const vb = padBox(shape.box, 0.08);
   const [picked, setPicked] = useState<Thing | null>(null);
 
   const pick = (t: Thing) => {
-    sfx.pop();
     setPicked(t);
-    void say(L.thing(t));
+    onPick(t);
   };
+  const stampIcon = state.things[0].icon === 'ARCH' ? '⭐' : state.things[0].icon;
+  const heardCount = state.things.filter((t) => heard.has(t.word)).length;
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -48,12 +55,28 @@ export function StateCard({ state, newStamp, onClose }: Props) {
           <svg viewBox={vb.join(' ')} className="card-shape" aria-hidden="true">
             <path d={shape.d} fill={region.color} stroke={region.deep} strokeWidth={vb[2] / 80} strokeLinejoin="round" />
           </svg>
-          {newStamp && (
-            <div className="stamp-slam" aria-hidden="true">
-              <Icon icon={state.things[0].icon === 'ARCH' ? '⭐' : state.things[0].icon} size="2.2rem" />
-            </div>
-          )}
         </button>
+
+        {stamped ? (
+          <div className={`stamp-slot got ${justStamped ? 'slam' : ''}`} aria-label="Stamp earned">
+            <Icon icon={stampIcon} size="2.2rem" />
+          </div>
+        ) : (
+          <button
+            className="stamp-slot"
+            onClick={() => {
+              sfx.pop();
+              void say(L.stampHint);
+            }}
+            aria-label={`${heardCount} of 3 pictures heard. Tap all three to earn the stamp.`}
+          >
+            <span className="stamp-dots" aria-hidden="true">
+              {state.things.map((t) => (
+                <span key={t.word} className={`dot ${heard.has(t.word) ? 'on' : ''}`} />
+              ))}
+            </span>
+          </button>
+        )}
 
         <h2 className="card-title">
           {state.name} <span className="speaker">🔊</span>
@@ -63,13 +86,18 @@ export function StateCard({ state, newStamp, onClose }: Props) {
           {state.things.map((t) => (
             <button
               key={t.word}
-              className={`tile ${picked === t ? 'picked' : ''}`}
+              className={`tile ${picked === t ? 'picked' : ''} ${!stamped && !heard.has(t.word) ? 'invite' : ''}`}
               onClick={() => pick(t)}
               aria-label={t.word}
               aria-pressed={picked === t}
             >
               <Icon icon={t.icon} size="3.4rem" />
               <span className="tile-word">{t.word}</span>
+              {heard.has(t.word) && (
+                <span className="tile-check" aria-label="heard">
+                  ✓
+                </span>
+              )}
             </button>
           ))}
         </div>

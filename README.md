@@ -4,7 +4,7 @@ A tap-and-listen game for young explorers (built for a 4-year-old) to discover t
 its regions, states, animals, foods and landmarks — with Finn the fox as a talking guide.
 
 - Tap a color to zoom into a region, then tap a state to hear a fun fact
-- Collect passport stamps and badges; the map fills with pictures as you explore
+- Hear all three picture facts on a state to earn its passport stamp; the map fills with pictures as you explore
 - ⭐ Missions: "Can you find where alligators live?" with gentle hints
 - Everything is narrated — no reading required
 

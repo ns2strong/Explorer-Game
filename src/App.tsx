@@ -5,7 +5,7 @@ import { Passport } from './components/Passport';
 import { Mascot } from './components/Mascot';
 import { Confetti } from './components/Confetti';
 import { ParentSettings } from './components/ParentSettings';
-import { STATES, STATE_BY_FIPS, STATE_BY_CODE, type UsState } from './data/states';
+import { STATES, STATE_BY_FIPS, STATE_BY_CODE, type Thing, type UsState } from './data/states';
 import { REGION_BY_ID, type RegionId } from './data/regions';
 import { MISSIONS, type Mission } from './data/missions';
 import { ACHIEVEMENTS } from './data/achievements';
@@ -27,7 +27,8 @@ export default function App() {
   const [progress, setProgress] = useState<Progress>(loadProgress);
   const [started, setStarted] = useState(false);
   const [region, setRegion] = useState<RegionId | null>(null);
-  const [card, setCard] = useState<{ state: UsState; newStamp: boolean } | null>(null);
+  /** The open state card. `justStamped` plays the stamp animation when the last picture fact is heard. */
+  const [card, setCard] = useState<{ state: UsState; justStamped: boolean } | null>(null);
   const [passportOpen, setPassportOpen] = useState(false);
   const [mission, setMission] = useState<Mission | null>(null);
   const [misses, setMisses] = useState(0);
@@ -46,19 +47,23 @@ export default function App() {
   useEffect(() => saveProgress(progress), [progress]);
   useEffect(() => setSpeechEnabled(progress.voiceOn), [progress.voiceOn]);
 
-  /** Finn says something: show it in the bubble and speak it. */
+  /** Finn says something: show it in the bubble and speak it. Resolves true if it played to the end. */
   const talk = useCallback(
-    (text: string) => {
+    (text: string): Promise<boolean> => {
       const t = personalize(text, name);
       const id = ++talkId.current;
       setLine(t);
       setTalking(true);
-      void say(t).then(() => {
+      return say(t).then((finished) => {
         if (id === talkId.current) setTalking(false);
+        return finished;
       });
     },
     [name],
   );
+
+  const cardRef = useRef(card);
+  cardRef.current = card;
 
   // A ref mirror so progress updates can be computed synchronously (no side effects in state updaters).
   const progressRef = useRef(progress);
@@ -85,22 +90,43 @@ export default function App() {
     setProgress(next);
   }, []);
 
-  const visit = useCallback(
-    (st: UsState) =>
-      updateProgress((p) => (p.visited.includes(st.code) ? p : { ...p, visited: [...p.visited, st.code] })),
-    [updateProgress],
-  );
+  /** No stamp yet and no picture tapped: Finn explains how to earn the stamp. */
+  const needsStampHint = (st: UsState) =>
+    cardRef.current?.state === st &&
+    !progressRef.current.visited.includes(st.code) &&
+    !(progressRef.current.heard[st.code]?.length);
 
   const openCard = useCallback(
     (st: UsState, speak = true) => {
-      const isNew = !visited.has(st.code);
-      setCard({ state: st, newStamp: isNew });
-      visit(st);
-      if (isNew) setTimeout(() => sfx.stamp(), 450);
-      if (speak) talk(L.stateFact(st));
+      setCard({ state: st, justStamped: false });
+      if (speak)
+        void talk(L.stateFact(st)).then((finished) => {
+          if (finished && needsStampHint(st)) void talk(L.stampHint);
+        });
     },
-    [visited, visit, talk],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [talk],
   );
+
+  /** Ava tapped a picture fact. Hearing all three earns the state's stamp. */
+  const hearThing = (st: UsState, t: Thing) => {
+    sfx.pop();
+    const before = progressRef.current.heard[st.code] ?? [];
+    const heard = before.includes(t.word) ? before : [...before, t.word];
+    const earnsStamp = !progressRef.current.visited.includes(st.code) && st.things.every((x) => heard.includes(x.word));
+    updateProgress((p) => ({
+      ...p,
+      heard: { ...p.heard, [st.code]: heard },
+      visited: earnsStamp ? [...p.visited, st.code] : p.visited,
+    }));
+    if (earnsStamp) {
+      setCard({ state: st, justStamped: true });
+      setTimeout(() => sfx.stamp(), 250);
+    }
+    void say(L.thing(t)).then((finished) => {
+      if (finished && earnsStamp && cardRef.current?.state === st) void talk(L.stampEarned);
+    });
+  };
 
   // ── Missions ────────────────────────────────────────────────
   const startMission = () => {
@@ -194,7 +220,11 @@ export default function App() {
   }, [showCelebration, current?.key]);
 
   const dismissCelebration = () => {
-    if (celebrations.length === 1 && current?.urgent) setTimeout(() => talk(L.anotherMission), 200);
+    if (celebrations.length === 1 && current?.urgent) {
+      // After a mission win the state card is open: explain the stamp if it isn't earned yet.
+      const st = cardRef.current?.state;
+      setTimeout(() => void talk(st && needsStampHint(st) ? L.stampHint : L.anotherMission), 200);
+    }
     setCelebrations((q) => q.slice(1));
   };
 
@@ -315,7 +345,10 @@ export default function App() {
       {card && (
         <StateCard
           state={card.state}
-          newStamp={card.newStamp}
+          heard={new Set(progress.heard[card.state.code] ?? [])}
+          stamped={visited.has(card.state.code)}
+          justStamped={card.justStamped}
+          onPick={(t) => hearThing(card.state, t)}
           onClose={() => {
             sfx.pop();
             setCard(null);

@@ -79,39 +79,39 @@ export function unlockSpeech() {
   s.speak(u);
 }
 
-function speakWithBrowser(text: string, my: number): Promise<void> {
+function speakWithBrowser(text: string, my: number): Promise<boolean> {
   const s = synth();
-  if (!s) return Promise.resolve();
+  if (!s) return Promise.resolve(false);
   return new Promise((resolve) => {
     // A short delay after cancel() avoids dropped utterances in Safari/Chrome.
     setTimeout(() => {
-      if (my !== token) return resolve();
+      if (my !== token) return resolve(false);
       const u = new SpeechSynthesisUtterance(text);
       if (chosen) u.voice = chosen;
       u.lang = chosen?.lang ?? 'en-US';
       u.rate = 0.95;
       u.pitch = 1.05;
-      u.onend = () => resolve();
-      u.onerror = () => resolve();
+      u.onend = () => resolve(my === token);
+      u.onerror = () => resolve(false);
       s.speak(u);
     }, 60);
   });
 }
 
-function playClip(file: string, text: string, my: number): Promise<void> {
+function playClip(file: string, text: string, my: number): Promise<boolean> {
   audio ??= new Audio();
   const el = audio;
   return new Promise((resolve) => {
     const done = () => {
       el.onended = el.onerror = null;
-      resolve();
+      resolve(my === token);
     };
     el.onended = done;
     // If the clip can't load, fall back to the built-in voice.
     el.onerror = () => {
       el.onended = el.onerror = null;
       if (my === token) void speakWithBrowser(text, my).then(resolve);
-      else resolve();
+      else resolve(false);
     };
     el.src = file;
     el.play().catch(() => el.onerror?.(new Event('error')));
@@ -120,12 +120,13 @@ function playClip(file: string, text: string, my: number): Promise<void> {
 
 /**
  * Speak `text`, interrupting anything already being said.
- * Resolves when finished (or immediately if sound is off).
+ * Resolves `true` if the line played to the end, `false` if it was interrupted
+ * or sound is off. (A clip cut off by another line may never resolve.)
  */
-export function say(text: string): Promise<void> {
+export function say(text: string): Promise<boolean> {
   const my = ++token;
   stopPlayback();
-  if (!enabled) return Promise.resolve();
+  if (!enabled) return Promise.resolve(false);
   const file = CLIPS[clipKey(text)];
   return file ? playClip(file, text, my) : speakWithBrowser(text, my);
 }

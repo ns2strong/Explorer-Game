@@ -38,7 +38,7 @@ Regions: Northeast, Southeast, Midwest, Southwest, West, and Alaska & Hawaii (th
 
 | Reward | How |
 |---|---|
-| Passport stamp | First visit to any state |
+| Passport stamp | Hear all three picture facts on a state's card (the stamp outline fills one dot per picture) |
 | Map pictures | Visited states change color and show their picture on the map |
 | Count badges | 1, 5, 10, 25, 50 states |
 | Region badges | Visit every state in a region (e.g. "Southwest Trailblazer") |
@@ -71,7 +71,9 @@ Progress is stored only on the device (`localStorage`); there are no accounts an
 
 **v0.1** — map, 6 regions, 50 state cards, passport, 12 missions, 14 badges, narration, parent settings.
 
-**v0.1.1 (this build)** — spoken details for all 150 picture tiles; ElevenLabs voice pipeline with built-in voice fallback.
+**v0.1.1** — spoken details for all 150 picture tiles; ElevenLabs voice pipeline with built-in voice fallback.
+
+**v0.1.2 (this build)** — all 441 lines recorded with ElevenLabs; stamps are earned by hearing all three picture facts.
 
 **v0.2**
 - State Puzzle mini-game (drag states into place)

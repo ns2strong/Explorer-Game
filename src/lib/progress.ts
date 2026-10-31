@@ -4,7 +4,10 @@
 
 export interface Progress {
   playerName: string;
+  /** States with a passport stamp (all picture facts heard). */
   visited: string[];
+  /** Picture facts heard so far, by state code → tile words. */
+  heard: Record<string, string[]>;
   missionsDone: string[];
   achievements: string[];
   voiceOn: boolean;
@@ -16,6 +19,7 @@ const KEY = 'explorer-game:progress:v1';
 export const freshProgress = (playerName = DEFAULT_PLAYER_NAME): Progress => ({
   playerName,
   visited: [],
+  heard: {},
   missionsDone: [],
   achievements: [],
   voiceOn: true,
