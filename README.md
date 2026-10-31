@@ -8,6 +8,8 @@ its regions, states, animals, foods and landmarks — with Finn the fox as a tal
 - ⭐ Missions: "Can you find where alligators live?" with gentle hints
 - Everything is narrated — no reading required
 
+**Play it:** https://ns2strong.github.io/Explorer-Game/ (on iPad: open in Safari, then Share → Add to Home Screen).
+
 See [docs/DESIGN.md](docs/DESIGN.md) for the full design and roadmap.
 
 ## Run it on a computer
