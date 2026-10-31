@@ -74,3 +74,18 @@ describe('narration', () => {
     expect(clipKey('That’s  Ohio!')).toBe(clipKey("That's Ohio!"));
   });
 });
+
+describe('grown-up gate', () => {
+  it('asks a sum with four distinct positive choices including the answer', async () => {
+    const { makeGateQuestion } = await import('../src/lib/parentGate');
+    for (let i = 0; i < 500; i++) {
+      const q = makeGateQuestion();
+      expect(q.answer).toBe(q.a + q.b);
+      expect(q.a).toBeGreaterThanOrEqual(3);
+      expect(q.b).toBeLessThanOrEqual(9);
+      expect(new Set(q.choices).size).toBe(4);
+      expect(q.choices).toContain(q.answer);
+      expect(q.choices.every((n) => n > 0)).toBe(true);
+    }
+  });
+});

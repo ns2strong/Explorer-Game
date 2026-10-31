@@ -63,8 +63,13 @@ The game picks it up automatically.
 
 ## Grown-up settings
 
-Press and hold the faint ⚙️ in the bottom-right corner for 2 seconds to change the player's name,
-turn narration on/off, or reset progress. Progress is saved on the device only.
+1. Press and hold the faint ⚙️ in the bottom-right corner for 2 seconds.
+2. Answer the addition question (Ava can't read it or solve it yet; a wrong answer just closes it).
+3. Change the player's name or turn narration on/off, then tap Save.
+
+To start over, press and hold **"Hold to erase Ava's progress"** for 3 seconds. Letting go early
+cancels. This erases stamps, badges and missions; the name and voice setting stay.
+Progress is saved on the device only.
 
 ## Develop
 

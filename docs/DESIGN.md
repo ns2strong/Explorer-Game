@@ -50,7 +50,11 @@ Deliberately excluded: timers, lives, loss-based streaks, ads, purchases, and an
 
 ## Grown-up controls
 
-Press and hold the faint ⚙️ (bottom-right) for 2 seconds: change the name, turn narration on/off, reset progress.
+Three deliberate steps keep Ava out:
+1. Press and hold the faint ⚙️ (bottom-right) for 2 seconds.
+2. Answer a random addition question (e.g. "What is 7 + 5?") from four number buttons. A wrong answer closes quietly.
+3. Settings: change the name, turn narration on/off. **Erasing progress** needs its own 3-second press-and-hold on a button that fills as you hold; letting go early cancels.
+
 Progress is stored only on the device (`localStorage`); there are no accounts and no data collection.
 
 ## Tech
