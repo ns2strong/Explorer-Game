@@ -16,9 +16,10 @@ Version 1 covers the U.S. only; the data model is designed to extend to the worl
 
 1. **Audio-first, never text-dependent.** Everything important is spoken by Finn the fox. Text on screen is for grown-ups.
 2. **Big targets, instant feedback.** Every tap bounces, pops, or sings. Buttons are 60–90px; tiny states get enlarged hit areas.
-3. **No failure.** Wrong answers get a gentle "That's Georgia! Keep looking!" After two misses, the answer glows.
-4. **Collecting is the reward.** Passport stamps, badges, and a map that fills up with pictures.
-5. **Personal.** The game is "Ava's Big Adventure"; Finn greets and cheers her by name. The name lives in one setting a parent can change.
+3. **Listen all the way through.** A fact (a state's fact, a picture's fact, the capital) plays to the end before Ava can tap anything else; other buttons grey out and the fact being read wiggles if she taps. A picture counts toward the stamp only once its fact finishes. If audio stalls, the game unlocks after a time limit based on the line's length.
+4. **No failure.** Wrong answers get a gentle "That's Georgia! Keep looking!" After two misses, the answer glows.
+5. **Collecting is the reward.** Passport stamps, badges, and a map that fills up with pictures.
+6. **Personal.** The game is "Ava's Big Adventure"; Finn greets and cheers her by name. The name lives in one setting a parent can change.
 
 ## Concept: Hybrid (free explore + missions)
 

@@ -15,28 +15,36 @@ interface Props {
   stamped: boolean;
   /** The stamp was earned just now: play the stamp animation. */
   justStamped: boolean;
-  /** Ava tapped a picture: the app speaks it and tracks progress toward the stamp. */
-  onPick: (t: Thing) => void;
+  /** A fact is playing: other taps wait until it finishes. */
+  busy: boolean;
+  /** Increments when Ava taps while a fact is playing (wiggles the fact being read). */
+  nudge: number;
+  /** Ava tapped a picture. Returns false if a fact is still playing. */
+  onPick: (t: Thing) => boolean;
+  /** Replay the state's fact / say the capital. Return false if a fact is still playing. */
+  onFact: () => boolean;
+  onCapital: () => boolean;
   onClose: () => void;
 }
 
-export function StateCard({ state, heard, stamped, justStamped, onPick, onClose }: Props) {
+export function StateCard({ state, heard, stamped, justStamped, busy, nudge, onPick, onFact, onCapital, onClose }: Props) {
   const region = REGION_BY_ID[state.region];
   const shape = SHAPE_BY_FIPS[state.fips];
   const vb = padBox(shape.box, 0.08);
   const [picked, setPicked] = useState<Thing | null>(null);
 
   const pick = (t: Thing) => {
-    setPicked(t);
-    onPick(t);
+    if (onPick(t)) setPicked(t);
   };
+  // Alternate between two identical animations so every nudge restarts the wiggle.
+  const nudgeClass = nudge > 0 ? `nudge-${nudge % 2}` : '';
   const stampIcon = state.things[0].icon === 'ARCH' ? '⭐' : state.things[0].icon;
   const heardCount = state.things.filter((t) => heard.has(t.word)).length;
 
   return (
     <div className="overlay" onClick={onClose}>
       <div
-        className="card pop-in"
+        className={`card pop-in ${busy ? 'busy' : ''}`}
         style={{ ['--region' as string]: region.color, ['--region-deep' as string]: region.deep }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -45,10 +53,9 @@ export function StateCard({ state, heard, stamped, justStamped, onPick, onClose 
         </button>
 
         <button
-          className="card-hero"
+          className={`card-hero ${busy && !picked ? nudgeClass : ''}`}
           onClick={() => {
-            setPicked(null);
-            void say(L.stateFact(state));
+            if (onFact()) setPicked(null);
           }}
           aria-label={`Hear about ${state.name}`}
         >
@@ -65,6 +72,7 @@ export function StateCard({ state, heard, stamped, justStamped, onPick, onClose 
           <button
             className="stamp-slot"
             onClick={() => {
+              if (busy) return;
               sfx.pop();
               void say(L.stampHint);
             }}
@@ -103,7 +111,7 @@ export function StateCard({ state, heard, stamped, justStamped, onPick, onClose 
         </div>
 
         {picked && (
-          <button className="detail pop-in" key={picked.word} onClick={() => pick(picked)} aria-label={`Hear about ${picked.word} again`}>
+          <button className={`detail pop-in ${busy ? nudgeClass : ''}`} key={picked.word} onClick={() => pick(picked)} aria-label={`Hear about ${picked.word} again`}>
             <span className="detail-icon">
               <Icon icon={picked.icon} size="4.2rem" />
             </span>
@@ -117,9 +125,7 @@ export function StateCard({ state, heard, stamped, justStamped, onPick, onClose 
         <button
           className="capital-btn"
           onClick={() => {
-            sfx.pop();
-            setPicked(null);
-            void say(L.capital(state));
+            if (onCapital()) setPicked(null);
           }}
         >
           ⭐ Capital: {state.capital}

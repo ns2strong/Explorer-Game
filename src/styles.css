@@ -295,6 +295,16 @@ button {
 .tile:active { transform: translateY(4px) rotate(-3deg); box-shadow: 0 2px 0 var(--region-deep); }
 .tile-word { font-size: 1rem; font-weight: 500; }
 .tile { position: relative; }
+
+/* While a fact plays, everything that would move on looks asleep until it finishes. */
+.card.busy .tile:not(.picked),
+.card.busy .capital-btn,
+.card.busy .close-btn,
+.card.busy .stamp-slot:not(.got),
+.passport.busy .round-btn { opacity: 0.4; filter: grayscale(0.5); transition: opacity 0.3s, filter 0.3s; }
+.card.busy .tile.invite { animation: none; }
+.card .nudge-0, .passport .nudge-0 { animation: nudge-a 0.5s ease-in-out; }
+.card .nudge-1, .passport .nudge-1 { animation: nudge-b 0.5s ease-in-out; }
 .tile.invite { animation: invite 2.2s ease-in-out infinite; }
 .tile.invite:nth-child(2) { animation-delay: 0.3s; }
 .tile.invite:nth-child(3) { animation-delay: 0.6s; }
@@ -453,6 +463,8 @@ button {
 .pop-in { animation: pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1); }
 .mission-banner.pop-in { animation: none; }
 
+@keyframes nudge-a { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px) rotate(-1deg); } 40% { transform: translateX(8px) rotate(1deg); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+@keyframes nudge-b { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px) rotate(-1deg); } 40% { transform: translateX(8px) rotate(1deg); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
 @keyframes invite { 0%, 80%, 100% { transform: translateY(0); } 88% { transform: translateY(-6px); } 94% { transform: translateY(0) rotate(-2deg); } }
 @keyframes pop-in { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes bounce { 0% { transform: scale(1); } 30% { transform: scale(1.12); } 55% { transform: scale(0.95); } 80% { transform: scale(1.03); } 100% { transform: scale(1); } }

@@ -81,7 +81,7 @@ export function unlockSpeech() {
 
 function speakWithBrowser(text: string, my: number): Promise<boolean> {
   const s = synth();
-  if (!s) return Promise.resolve(false);
+  if (!s) return Promise.resolve(true); // no speech engine: nothing to wait for
   return new Promise((resolve) => {
     // A short delay after cancel() avoids dropped utterances in Safari/Chrome.
     setTimeout(() => {
@@ -92,7 +92,8 @@ function speakWithBrowser(text: string, my: number): Promise<boolean> {
       u.rate = 0.95;
       u.pitch = 1.05;
       u.onend = () => resolve(my === token);
-      u.onerror = () => resolve(false);
+      // 'interrupted'/'canceled' means another line cut in; other errors mean it can't speak at all.
+      u.onerror = (e) => resolve(e.error !== 'interrupted' && e.error !== 'canceled' && my === token);
       s.speak(u);
     }, 60);
   });
@@ -120,13 +121,14 @@ function playClip(file: string, text: string, my: number): Promise<boolean> {
 
 /**
  * Speak `text`, interrupting anything already being said.
- * Resolves `true` if the line played to the end, `false` if it was interrupted
- * or sound is off. (A clip cut off by another line may never resolve.)
+ * Resolves `true` if the line played to the end (or sound is off, so there was
+ * nothing to wait for), `false` if it was interrupted. (A clip cut off by
+ * another line may never resolve.)
  */
 export function say(text: string): Promise<boolean> {
   const my = ++token;
   stopPlayback();
-  if (!enabled) return Promise.resolve(false);
+  if (!enabled) return Promise.resolve(true);
   const file = CLIPS[clipKey(text)];
   return file ? playClip(file, text, my) : speakWithBrowser(text, my);
 }

@@ -37,6 +37,10 @@ export default function App() {
   const [talking, setTalking] = useState(false);
   const [bounce, setBounce] = useState<{ fips: string; n: number } | null>(null);
   const [lastTouch, setLastTouch] = useState(() => Date.now());
+  /** A fact is playing: Ava can't move on until it finishes. `nudge` counts taps made meanwhile. */
+  const [busy, setBusy] = useState(false);
+  const [nudge, setNudge] = useState(0);
+  const busyRef = useRef(false);
   const talkId = useRef(0);
   const celebKey = useRef(0);
 
@@ -64,6 +68,46 @@ export default function App() {
 
   const cardRef = useRef(card);
   cardRef.current = card;
+
+  const setBusyBoth = (b: boolean) => {
+    busyRef.current = b;
+    setBusy(b);
+  };
+
+  /**
+   * Speak a fact that must play to the end: until it finishes, taps that would move on are
+   * ignored. Resolves true when it finished. If audio stalls, a time limit based on the
+   * length of the line unlocks the game (and counts it as heard) so Ava never gets stuck.
+   */
+  const narrate = useCallback(
+    (text: string): Promise<boolean> => {
+      setBusyBoth(true);
+      const limit = 2500 + text.length * 100;
+      return new Promise<boolean>((resolve) => {
+        let settled = false;
+        const finish = (finished: boolean) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          setBusyBoth(false);
+          resolve(finished);
+        };
+        const timer = setTimeout(() => finish(true), limit);
+        void talk(text).then(finish);
+      });
+    },
+    [talk],
+  );
+
+  /** Run `fn` only if no fact is playing; otherwise nudge Ava back to the fact. */
+  const ifFree = <A extends unknown[], R>(fn: (...a: A) => R) =>
+    (...a: A): R | false => {
+      if (busyRef.current) {
+        setNudge((n) => n + 1);
+        return false;
+      }
+      return fn(...a);
+    };
 
   // A ref mirror so progress updates can be computed synchronously (no side effects in state updaters).
   const progressRef = useRef(progress);
@@ -100,33 +144,45 @@ export default function App() {
     (st: UsState, speak = true) => {
       setCard({ state: st, justStamped: false });
       if (speak)
-        void talk(L.stateFact(st)).then((finished) => {
+        void narrate(L.stateFact(st)).then((finished) => {
           if (finished && needsStampHint(st)) void talk(L.stampHint);
         });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [talk],
+    [talk, narrate],
   );
 
-  /** Ava tapped a picture fact. Hearing all three earns the state's stamp. */
-  const hearThing = (st: UsState, t: Thing) => {
+  /**
+   * Ava tapped a picture. Its fact plays to the end; only then does it count as heard.
+   * Hearing all three earns the state's stamp. Returns false if another fact is still playing.
+   */
+  const hearThing = ifFree((st: UsState, t: Thing): boolean => {
     sfx.pop();
-    const before = progressRef.current.heard[st.code] ?? [];
-    const heard = before.includes(t.word) ? before : [...before, t.word];
-    const earnsStamp = !progressRef.current.visited.includes(st.code) && st.things.every((x) => heard.includes(x.word));
-    updateProgress((p) => ({
-      ...p,
-      heard: { ...p.heard, [st.code]: heard },
-      visited: earnsStamp ? [...p.visited, st.code] : p.visited,
-    }));
-    if (earnsStamp) {
-      setCard({ state: st, justStamped: true });
-      setTimeout(() => sfx.stamp(), 250);
-    }
-    void say(L.thing(t)).then((finished) => {
-      if (finished && earnsStamp && cardRef.current?.state === st) void talk(L.stampEarned);
+    void narrate(L.thing(t)).then((finished) => {
+      if (!finished) return;
+      const before = progressRef.current.heard[st.code] ?? [];
+      const heard = before.includes(t.word) ? before : [...before, t.word];
+      const earnsStamp = !progressRef.current.visited.includes(st.code) && st.things.every((x) => heard.includes(x.word));
+      updateProgress((p) => ({
+        ...p,
+        heard: { ...p.heard, [st.code]: heard },
+        visited: earnsStamp ? [...p.visited, st.code] : p.visited,
+      }));
+      if (earnsStamp && cardRef.current?.state === st) {
+        setCard({ state: st, justStamped: true });
+        setTimeout(() => sfx.stamp(), 150);
+        setTimeout(() => void talk(L.stampEarned), 700);
+      }
     });
-  };
+    return true;
+  });
+
+  /** Replay a fact from a card or the passport (also locked until it finishes). */
+  const replayFact = ifFree((text: string): boolean => {
+    sfx.pop();
+    void narrate(text);
+    return true;
+  });
 
   // ── Missions ────────────────────────────────────────────────
   const startMission = () => {
@@ -171,7 +227,7 @@ export default function App() {
     talk(L.regionWrong(reg));
   };
 
-  const handleTap = (fips: string) => {
+  const handleTap = ifFree((fips: string) => {
     const st = STATE_BY_FIPS[fips];
     if (!st) return;
     setLastTouch(Date.now());
@@ -187,15 +243,15 @@ export default function App() {
       return talk(L.wrongState(st));
     }
     openCard(st);
-  };
+  });
 
-  const goHome = () => {
+  const goHome = ifFree(() => {
     setLastTouch(Date.now());
     if (region === null) return;
     sfx.zoom();
     setRegion(null);
     talk(mission ? mission.ask : L.home);
-  };
+  });
 
   // Hints: after two misses, gently glow the answer (or its region).
   const glow = useMemo(() => {
@@ -230,14 +286,14 @@ export default function App() {
 
   // ── Idle nudge ─────────────────────────────────────────────
   useEffect(() => {
-    if (!started || card || passportOpen || showCelebration) return;
+    if (!started || card || passportOpen || showCelebration || busy) return;
     const t = setTimeout(() => {
       const hint = mission ? mission.ask : L.idleHints[Math.floor(Math.random() * L.idleHints.length)];
       talk(hint);
       setLastTouch(Date.now());
     }, 30000);
     return () => clearTimeout(t);
-  }, [started, card, passportOpen, showCelebration, mission, lastTouch, talk]);
+  }, [started, card, passportOpen, showCelebration, busy, mission, lastTouch, talk]);
 
   // ── Start screen ────────────────────────────────────────────
   const play = () => {
@@ -288,22 +344,22 @@ export default function App() {
         <button
           className="title-pill"
           style={regionInfo ? { background: regionInfo.color, borderColor: regionInfo.deep } : undefined}
-          onClick={() => (regionInfo ? talk(regionInfo.intro) : talk(L.usa))}
+          onClick={ifFree(() => (regionInfo ? talk(regionInfo.intro) : talk(L.usa)))}
         >
           {regionInfo ? `${regionInfo.emoji} ${regionInfo.name}` : '🇺🇸 United States'}
         </button>
 
         <div className="topbar-right">
-          <button className={`round-btn star ${mission ? 'active' : ''}`} onClick={mission ? () => talk(mission.ask) : startMission} aria-label="Mission">
+          <button className={`round-btn star ${mission ? 'active' : ''}`} onClick={ifFree(mission ? () => talk(mission.ask) : startMission)} aria-label="Mission">
             ⭐
           </button>
           <button
             className="round-btn passport-btn"
-            onClick={() => {
+            onClick={ifFree(() => {
               sfx.pop();
               setPassportOpen(true);
               talk(L.passport(progress.visited.length));
-            }}
+            })}
             aria-label="Passport"
           >
             📘<span className="count">{progress.visited.length}</span>
@@ -313,11 +369,11 @@ export default function App() {
 
       {mission && (
         <div className="mission-banner pop-in">
-          <button className="mission-icon" onClick={() => talk(mission.ask)} aria-label="Hear the mission again">
+          <button className="mission-icon" onClick={ifFree(() => talk(mission.ask))} aria-label="Hear the mission again">
             {mission.icon}
           </button>
           <span className="mission-q">Find it!</span>
-          <button className="round-btn small" onClick={cancelMission} aria-label="Stop mission">
+          <button className="round-btn small" onClick={ifFree(cancelMission)} aria-label="Stop mission">
             ✖️
           </button>
         </div>
@@ -327,7 +383,7 @@ export default function App() {
         <USMap region={region} visited={visited} glow={glow} bounce={bounce} onTap={handleTap} />
       </main>
 
-      <Mascot line={line} talking={talking} />
+      <Mascot line={line} talking={talking} onReplay={ifFree(() => line && void narrate(line))} />
 
       <ParentSettings
         playerName={name}
@@ -335,6 +391,7 @@ export default function App() {
         onSave={(n, v) => setProgress((p) => ({ ...p, playerName: n, voiceOn: v }))}
         onReset={() => {
           stopSpeaking();
+          setBusyBoth(false);
           setProgress((p) => ({ ...freshProgress(p.playerName), voiceOn: p.voiceOn }));
           setCelebrations([]);
           setMission(null);
@@ -348,13 +405,17 @@ export default function App() {
           heard={new Set(progress.heard[card.state.code] ?? [])}
           stamped={visited.has(card.state.code)}
           justStamped={card.justStamped}
-          onPick={(t) => hearThing(card.state, t)}
-          onClose={() => {
+          busy={busy}
+          nudge={nudge}
+          onPick={(t) => hearThing(card.state, t) === true}
+          onFact={() => replayFact(L.stateFact(card.state)) === true}
+          onCapital={() => replayFact(L.capital(card.state)) === true}
+          onClose={ifFree(() => {
             sfx.pop();
             setCard(null);
             stopSpeaking();
             setTalking(false);
-          }}
+          })}
         />
       )}
 
@@ -363,12 +424,14 @@ export default function App() {
           playerName={name}
           visited={visited}
           earned={earned}
-          onClose={() => {
+          busy={busy}
+          speak={(text) => void replayFact(text)}
+          onClose={ifFree(() => {
             sfx.pop();
             setPassportOpen(false);
             stopSpeaking();
             setTalking(false);
-          }}
+          })}
         />
       )}
 
