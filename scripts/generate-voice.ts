@@ -98,10 +98,8 @@ async function main() {
     console.log('Voice or model changed since the last run, so every line will be re-recorded.');
   }
 
-  const todo = lines.filter((l) => {
-    const key = clipKey(l);
-    return force || !old.clips[key] || !existsSync(join(AUDIO_DIR, `${key}.mp3`));
-  });
+  // A clip counts as done if its file exists, even if an interrupted run never listed it.
+  const todo = lines.filter((l) => force || !existsSync(join(AUDIO_DIR, `${clipKey(l)}.mp3`)));
   const todoChars = todo.reduce((n, l) => n + l.length, 0);
 
   console.log(`Player name: ${playerName}`);
@@ -120,7 +118,7 @@ async function main() {
   const clips: Record<string, string> = {};
   for (const l of lines) {
     const key = clipKey(l);
-    if (!force && old.clips[key] && existsSync(join(AUDIO_DIR, `${key}.mp3`))) clips[key] = old.clips[key];
+    if (!force && existsSync(join(AUDIO_DIR, `${key}.mp3`))) clips[key] = `audio/${key}.mp3`;
   }
 
   const save = () => {
@@ -131,16 +129,18 @@ async function main() {
   };
 
   let done = 0;
-  for (const line of todo.slice(0, limit)) {
-    const key = clipKey(line);
-    const file = join(AUDIO_DIR, `${key}.mp3`);
-    process.stdout.write(`[${++done}/${Math.min(todo.length, limit)}] ${line.slice(0, 70)}… `);
-    await record(line, file);
-    clips[key] = `audio/${key}.mp3`;
-    console.log('✓');
-    if (done % 10 === 0) save(); // keep progress if interrupted
+  try {
+    for (const line of todo.slice(0, limit)) {
+      const key = clipKey(line);
+      const file = join(AUDIO_DIR, `${key}.mp3`);
+      process.stdout.write(`[${++done}/${Math.min(todo.length, limit)}] ${line.slice(0, 70)}… `);
+      await record(line, file);
+      clips[key] = `audio/${key}.mp3`;
+      console.log('✓');
+    }
+  } finally {
+    save(); // keep everything recorded so far, even if ElevenLabs stops us (e.g. out of credits)
   }
-  save();
 
   // Remove recordings for lines that no longer exist (e.g. an edited fact).
   const keep = new Set(Object.keys(clips).map((k) => `${k}.mp3`));
@@ -154,6 +154,9 @@ main().catch((e) => {
   console.error(e instanceof Error ? e.message : e);
   if (e instanceof TypeError && /fetch failed/i.test(e.message) && (process.env.HTTPS_PROXY || process.env.https_proxy)) {
     console.error('\nNode could not reach ElevenLabs. Behind a proxy, run with NODE_USE_ENV_PROXY=1 (Node 22.21 or newer).');
+  }
+  if (/quota_exceeded/.test(String(e))) {
+    console.error('\nOut of ElevenLabs credits. Everything recorded so far is saved; run this again after adding credits to continue.');
   }
   if (/voices_read/.test(String(e))) {
     console.error('\nThis API key is restricted. Enable "Voices: Read" for it on elevenlabs.io, or find voice ids in the Voice Library instead.');
