@@ -50,3 +50,27 @@ describe('game content', () => {
     expect(personalize('Great job, {name}!', 'Ava')).toBe('Great job, Ava!');
   });
 });
+
+describe('narration', () => {
+  it('every picture tile has a short spoken detail', async () => {
+    for (const s of STATES)
+      for (const t of s.things) {
+        expect(t.detail.length, `${s.name} / ${t.word}`).toBeGreaterThan(20);
+        expect(t.detail.length, `${s.name} / ${t.word} detail is too long`).toBeLessThan(160);
+      }
+  });
+
+  it('lists every line once, fully personalized, with unique recording keys', async () => {
+    const { allLines } = await import('../src/data/lines');
+    const { clipKey } = await import('../src/lib/clipKey');
+    const lines = allLines('Ava');
+    expect(lines.length).toBeGreaterThan(300);
+    expect(lines.some((l) => l.includes('{name}'))).toBe(false);
+    expect(new Set(lines.map(clipKey)).size).toBe(lines.length);
+  });
+
+  it('clip keys ignore curly vs straight apostrophes and spacing', async () => {
+    const { clipKey } = await import('../src/lib/clipKey');
+    expect(clipKey('That’s  Ohio!')).toBe(clipKey("That's Ohio!"));
+  });
+});

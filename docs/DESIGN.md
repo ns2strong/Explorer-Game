@@ -56,7 +56,7 @@ Progress is stored only on the device (`localStorage`); there are no accounts an
 
 - **React + TypeScript + Vite** — a static web app that runs on iPad Safari and desktop browsers; can be added to the iPad home screen.
 - **Map**: `us-atlas` (public-domain Census shapes, pre-projected Albers) rendered as SVG via `d3-geo`. Zoom animates the SVG `viewBox`.
-- **Voice**: the browser's built-in speech synthesis (prefers Samantha on Apple devices). iOS requires a first tap, hence the big ▶ start button.
+- **Voice**: pre-recorded ElevenLabs clips for every line (`npm run voice`), falling back to the browser's built-in speech for anything not yet recorded (preferring Premium/Enhanced voices). All narration is defined in `src/data/lines.ts`, so the recorder can't miss a line. iOS requires a first tap, hence the big ▶ start button.
 - **Sound effects**: synthesized with Web Audio — no audio files.
 - **Content as data** — `src/data/*.ts`. Adding a fact, mission, or badge is a data edit, and the `country → region → state` shape generalizes to other countries.
 
@@ -65,10 +65,13 @@ Progress is stored only on the device (`localStorage`); there are no accounts an
 - Facts are 1–2 short sentences, under 140 characters, written to be heard (onomatopoeia welcome: "Snap snap!", "Vroom!").
 - Prefer concrete, picturable things: animals, food, landmarks, "the biggest / first / most".
 - Avoid scary or adult topics (disasters, gambling, wars).
+- Each picture tile has its own `detail`: 1–2 sentences, under 160 characters, spoken when Ava taps it.
 
 ## Roadmap
 
-**v0.1 (this build)** — map, 6 regions, 50 state cards, passport, 12 missions, 14 badges, narration, parent settings.
+**v0.1** — map, 6 regions, 50 state cards, passport, 12 missions, 14 badges, narration, parent settings.
+
+**v0.1.1 (this build)** — spoken details for all 150 picture tiles; ElevenLabs voice pipeline with built-in voice fallback.
 
 **v0.2**
 - State Puzzle mini-game (drag states into place)
@@ -77,7 +80,7 @@ Progress is stored only on the device (`localStorage`); there are no accounts an
 - Offline support (service worker)
 
 **v0.3**
-- Recorded narration (a warm human voice, maybe a parent's!) replacing TTS for key lines
+- Optional: clone a parent's voice in ElevenLabs and re-record with it
 - Illustrated mascot and landmark art to replace emoji
 - Ava picks her explorer outfit/vehicle (hot-air balloon, plane, car) that flies between regions
 - Grown-up progress view

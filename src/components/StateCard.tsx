@@ -1,5 +1,7 @@
-import type { UsState } from '../data/states';
+import { useState } from 'react';
+import type { Thing, UsState } from '../data/states';
 import { REGION_BY_ID } from '../data/regions';
+import { L } from '../data/lines';
 import { SHAPE_BY_FIPS, padBox } from '../lib/geo';
 import { say } from '../lib/speech';
 import { sfx } from '../lib/sound';
@@ -16,6 +18,13 @@ export function StateCard({ state, newStamp, onClose }: Props) {
   const region = REGION_BY_ID[state.region];
   const shape = SHAPE_BY_FIPS[state.fips];
   const vb = padBox(shape.box, 0.08);
+  const [picked, setPicked] = useState<Thing | null>(null);
+
+  const pick = (t: Thing) => {
+    sfx.pop();
+    setPicked(t);
+    void say(L.thing(t));
+  };
 
   return (
     <div className="overlay" onClick={onClose}>
@@ -28,7 +37,14 @@ export function StateCard({ state, newStamp, onClose }: Props) {
           ✖️
         </button>
 
-        <button className="card-hero" onClick={() => say(`${state.name}! ${state.fact}`)} aria-label={`Hear about ${state.name}`}>
+        <button
+          className="card-hero"
+          onClick={() => {
+            setPicked(null);
+            void say(L.stateFact(state));
+          }}
+          aria-label={`Hear about ${state.name}`}
+        >
           <svg viewBox={vb.join(' ')} className="card-shape" aria-hidden="true">
             <path d={shape.d} fill={region.color} stroke={region.deep} strokeWidth={vb[2] / 80} strokeLinejoin="round" />
           </svg>
@@ -47,12 +63,10 @@ export function StateCard({ state, newStamp, onClose }: Props) {
           {state.things.map((t) => (
             <button
               key={t.word}
-              className="tile wiggle-on-tap"
-              onClick={() => {
-                sfx.pop();
-                void say(t.word);
-              }}
+              className={`tile ${picked === t ? 'picked' : ''}`}
+              onClick={() => pick(t)}
               aria-label={t.word}
+              aria-pressed={picked === t}
             >
               <Icon icon={t.icon} size="3.4rem" />
               <span className="tile-word">{t.word}</span>
@@ -60,11 +74,24 @@ export function StateCard({ state, newStamp, onClose }: Props) {
           ))}
         </div>
 
+        {picked && (
+          <button className="detail pop-in" key={picked.word} onClick={() => pick(picked)} aria-label={`Hear about ${picked.word} again`}>
+            <span className="detail-icon">
+              <Icon icon={picked.icon} size="4.2rem" />
+            </span>
+            <span className="detail-text">
+              <strong>{picked.word.charAt(0).toUpperCase() + picked.word.slice(1)}</strong>
+              {picked.detail} <span className="speaker">🔊</span>
+            </span>
+          </button>
+        )}
+
         <button
           className="capital-btn"
           onClick={() => {
             sfx.pop();
-            void say(`The capital city of ${state.name} is ${state.capital}.`);
+            setPicked(null);
+            void say(L.capital(state));
           }}
         >
           ⭐ Capital: {state.capital}

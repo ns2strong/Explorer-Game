@@ -9,6 +9,7 @@ import { STATES, STATE_BY_FIPS, STATE_BY_CODE, type UsState } from './data/state
 import { REGION_BY_ID, type RegionId } from './data/regions';
 import { MISSIONS, type Mission } from './data/missions';
 import { ACHIEVEMENTS } from './data/achievements';
+import { L } from './data/lines';
 import { loadProgress, saveProgress, freshProgress, personalize, type Progress } from './lib/progress';
 import { say, stopSpeaking, unlockSpeech, setSpeechEnabled } from './lib/speech';
 import { sfx, unlockSound } from './lib/sound';
@@ -21,13 +22,6 @@ interface Celebration {
   /** Mission wins show right away, even over a state card. Badges wait for the card to close. */
   urgent: boolean;
 }
-
-const IDLE_HINTS = [
-  'Tap a color on the map to go exploring, {name}!',
-  'Want a mission? Tap the big star!',
-  'Tap the blue book to see your passport stamps!',
-  'Which state will we visit next, {name}?',
-];
 
 export default function App() {
   const [progress, setProgress] = useState<Progress>(loadProgress);
@@ -103,7 +97,7 @@ export default function App() {
       setCard({ state: st, newStamp: isNew });
       visit(st);
       if (isNew) setTimeout(() => sfx.stamp(), 450);
-      if (speak) talk(`${st.name}! ${st.fact}`);
+      if (speak) talk(L.stateFact(st));
     },
     [visited, visit, talk],
   );
@@ -121,7 +115,7 @@ export default function App() {
   const cancelMission = () => {
     setMission(null);
     setMisses(0);
-    talk('Okay! Let’s just explore.');
+    talk(L.stopMission);
   };
 
   const winMission = (m: Mission, st: UsState) => {
@@ -146,9 +140,9 @@ export default function App() {
     setRegion(r);
     const reg = REGION_BY_ID[r];
     if (!mission) return talk(reg.intro);
-    if (missionRegions.has(r)) return talk(`${reg.name}! Good thinking, {name}! Can you find it here?`);
+    if (missionRegions.has(r)) return talk(L.regionGood(reg));
     setMisses((n) => n + 1);
-    talk(`${reg.name}! Hmm, I don’t think it’s here. Tap the house to look somewhere else!`);
+    talk(L.regionWrong(reg));
   };
 
   const handleTap = (fips: string) => {
@@ -164,7 +158,7 @@ export default function App() {
       if (mission.targets.includes(st.code)) return winMission(mission, st);
       setMisses((n) => n + 1);
       sfx.hmm();
-      return talk(`That’s ${st.name}! Keep looking, you can do it!`);
+      return talk(L.wrongState(st));
     }
     openCard(st);
   };
@@ -174,7 +168,7 @@ export default function App() {
     if (region === null) return;
     sfx.zoom();
     setRegion(null);
-    talk(mission ? mission.ask : 'Here is the whole United States! Tap a color to explore.');
+    talk(mission ? mission.ask : L.home);
   };
 
   // Hints: after two misses, gently glow the answer (or its region).
@@ -200,7 +194,7 @@ export default function App() {
   }, [showCelebration, current?.key]);
 
   const dismissCelebration = () => {
-    if (celebrations.length === 1 && current?.urgent) setTimeout(() => talk('Want another mission? Tap the star!'), 200);
+    if (celebrations.length === 1 && current?.urgent) setTimeout(() => talk(L.anotherMission), 200);
     setCelebrations((q) => q.slice(1));
   };
 
@@ -208,7 +202,7 @@ export default function App() {
   useEffect(() => {
     if (!started || card || passportOpen || showCelebration) return;
     const t = setTimeout(() => {
-      const hint = mission ? mission.ask : IDLE_HINTS[Math.floor(Math.random() * IDLE_HINTS.length)];
+      const hint = mission ? mission.ask : L.idleHints[Math.floor(Math.random() * L.idleHints.length)];
       talk(hint);
       setLastTouch(Date.now());
     }, 30000);
@@ -222,11 +216,7 @@ export default function App() {
     sfx.fanfare();
     setStarted(true);
     setLastTouch(Date.now());
-    talk(
-      progress.visited.length === 0
-        ? 'Hi {name}! I’m Finn the fox. Let’s explore the United States of America! Tap a color on the map to go there.'
-        : `Welcome back, {name}! You have ${progress.visited.length} stamps in your passport. Where should we go today?`,
-    );
+    talk(progress.visited.length === 0 ? L.greetNew : L.welcomeBack);
   };
 
   if (!started) {
@@ -268,7 +258,7 @@ export default function App() {
         <button
           className="title-pill"
           style={regionInfo ? { background: regionInfo.color, borderColor: regionInfo.deep } : undefined}
-          onClick={() => (regionInfo ? talk(regionInfo.intro) : talk('This is the United States of America! It has fifty states.'))}
+          onClick={() => (regionInfo ? talk(regionInfo.intro) : talk(L.usa))}
         >
           {regionInfo ? `${regionInfo.emoji} ${regionInfo.name}` : '🇺🇸 United States'}
         </button>
@@ -282,7 +272,7 @@ export default function App() {
             onClick={() => {
               sfx.pop();
               setPassportOpen(true);
-              talk(`${name}'s passport! You have ${progress.visited.length} stamps.`);
+              talk(L.passport(progress.visited.length));
             }}
             aria-label="Passport"
           >

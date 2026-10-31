@@ -2,6 +2,8 @@ import { REGIONS } from '../data/regions';
 import { STATES } from '../data/states';
 import { ACHIEVEMENTS } from '../data/achievements';
 import { say } from '../lib/speech';
+import { L } from '../data/lines';
+import { personalize } from '../lib/progress';
 import { sfx } from '../lib/sound';
 import { Icon } from './Icon';
 
@@ -19,7 +21,7 @@ export function Passport({ playerName, visited, earned, onClose }: Props) {
         <header className="passport-head">
           <button
             className="passport-title"
-            onClick={() => say(`This is ${playerName}'s passport! You have ${visited.size} stamps out of fifty.`)}
+            onClick={() => say(personalize(L.passport(visited.size), playerName))}
           >
             📘 {playerName}'s Passport <span className="speaker">🔊</span>
           </button>
@@ -40,7 +42,7 @@ export function Passport({ playerName, visited, earned, onClose }: Props) {
                 className={`badge ${got ? 'got' : 'locked'}`}
                 onClick={() => {
                   sfx.pop();
-                  void say(got ? a.title : 'Keep exploring to earn this badge!');
+                  void say(got ? a.title : L.badgeLocked);
                 }}
                 aria-label={got ? a.title : 'Locked badge'}
               >
@@ -66,7 +68,7 @@ export function Passport({ playerName, visited, earned, onClose }: Props) {
                       className={`stamp ${got ? 'got' : 'empty'}`}
                       onClick={() => {
                         sfx.pop();
-                        void say(got ? `${s.name}! ${s.fact}` : 'Find this state on the map to get the stamp!');
+                        void say(got ? L.stateFact(s) : L.stampEmpty);
                       }}
                       aria-label={got ? s.name : 'Empty stamp'}
                     >

@@ -1,23 +1,34 @@
 /**
- * Narration using the browser's built-in text-to-speech.
- * Ava can't read yet, so every message in the game is spoken.
+ * Finn's voice. Ava can't read yet, so every message in the game is spoken.
  *
- * iPad Safari only allows speech after the first tap, which is why the
- * game starts with a big "Play" button that calls `unlockSpeech()`.
+ * 1. If a recorded clip exists for the sentence (made with ElevenLabs by
+ *    `npm run voice`), play it.
+ * 2. Otherwise use the browser's built-in text-to-speech, picking the most
+ *    natural voice the device has.
+ *
+ * iPad Safari only allows sound after the first tap, which is why the game
+ * starts with a big "Play" button that calls `unlockSpeech()`.
  */
+import manifest from '../audio-manifest.json';
+import { clipKey } from './clipKey';
 
+const CLIPS: Record<string, string> = (manifest as { clips?: Record<string, string> }).clips ?? {};
+
+/** Best first. Premium/Enhanced/Natural voices sound far less robotic. */
 const PREFERRED_VOICES = [
-  'Samantha', // macOS / iPadOS
-  'Google US English',
-  'Microsoft Aria',
-  'Microsoft Jenny',
-  'Karen',
-  'Moira',
+  /\(Premium\)/i,
+  /\(Enhanced\)/i,
+  /Natural/i,
+  /^Google US English/,
+  /^Samantha/,
+  /^Microsoft (Aria|Jenny|Ava)/,
+  /^Karen/,
 ];
 
 let chosen: SpeechSynthesisVoice | null = null;
 let enabled = true;
 let token = 0;
+let audio: HTMLAudioElement | null = null;
 
 const synth = (): SpeechSynthesis | null =>
   typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null;
@@ -25,16 +36,16 @@ const synth = (): SpeechSynthesis | null =>
 function pickVoice() {
   const s = synth();
   if (!s) return;
-  const voices = s.getVoices();
-  if (!voices.length) return;
-  for (const name of PREFERRED_VOICES) {
-    const v = voices.find((x) => x.name.startsWith(name));
+  const english = s.getVoices().filter((v) => v.lang.startsWith('en'));
+  if (!english.length) return;
+  for (const pattern of PREFERRED_VOICES) {
+    const v = english.find((x) => pattern.test(x.name) && x.lang === 'en-US') ?? english.find((x) => pattern.test(x.name));
     if (v) {
       chosen = v;
       return;
     }
   }
-  chosen = voices.find((v) => v.lang === 'en-US') ?? voices.find((v) => v.lang.startsWith('en')) ?? null;
+  chosen = english.find((v) => v.lang === 'en-US') ?? english[0];
 }
 
 if (synth()) {
@@ -42,13 +53,25 @@ if (synth()) {
   synth()!.addEventListener?.('voiceschanged', pickVoice);
 }
 
+export const hasRecordedVoice = () => Object.keys(CLIPS).length > 0;
+
 export function setSpeechEnabled(on: boolean) {
   enabled = on;
-  if (!on) synth()?.cancel();
+  if (!on) stopSpeaking();
 }
+
+// A tiny silent WAV, played on the first tap so iOS lets this <audio> element play later.
+const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
 
 /** Call from inside a tap handler so iOS lets us talk later. */
 export function unlockSpeech() {
+  try {
+    audio ??= new Audio();
+    audio.src = SILENCE;
+    void audio.play().catch(() => undefined);
+  } catch {
+    audio = null;
+  }
   const s = synth();
   if (!s) return;
   const u = new SpeechSynthesisUtterance(' ');
@@ -56,15 +79,9 @@ export function unlockSpeech() {
   s.speak(u);
 }
 
-/**
- * Speak `text`, interrupting anything already being said.
- * Resolves when finished (or immediately if speech is unavailable/disabled).
- */
-export function say(text: string): Promise<void> {
+function speakWithBrowser(text: string, my: number): Promise<void> {
   const s = synth();
-  const my = ++token;
-  if (!s || !enabled) return Promise.resolve();
-  s.cancel();
+  if (!s) return Promise.resolve();
   return new Promise((resolve) => {
     // A short delay after cancel() avoids dropped utterances in Safari/Chrome.
     setTimeout(() => {
@@ -72,8 +89,8 @@ export function say(text: string): Promise<void> {
       const u = new SpeechSynthesisUtterance(text);
       if (chosen) u.voice = chosen;
       u.lang = chosen?.lang ?? 'en-US';
-      u.rate = 0.92;
-      u.pitch = 1.1;
+      u.rate = 0.95;
+      u.pitch = 1.05;
       u.onend = () => resolve();
       u.onerror = () => resolve();
       s.speak(u);
@@ -81,7 +98,44 @@ export function say(text: string): Promise<void> {
   });
 }
 
+function playClip(file: string, text: string, my: number): Promise<void> {
+  audio ??= new Audio();
+  const el = audio;
+  return new Promise((resolve) => {
+    const done = () => {
+      el.onended = el.onerror = null;
+      resolve();
+    };
+    el.onended = done;
+    // If the clip can't load, fall back to the built-in voice.
+    el.onerror = () => {
+      el.onended = el.onerror = null;
+      if (my === token) void speakWithBrowser(text, my).then(resolve);
+      else resolve();
+    };
+    el.src = file;
+    el.play().catch(() => el.onerror?.(new Event('error')));
+  });
+}
+
+/**
+ * Speak `text`, interrupting anything already being said.
+ * Resolves when finished (or immediately if sound is off).
+ */
+export function say(text: string): Promise<void> {
+  const my = ++token;
+  stopPlayback();
+  if (!enabled) return Promise.resolve();
+  const file = CLIPS[clipKey(text)];
+  return file ? playClip(file, text, my) : speakWithBrowser(text, my);
+}
+
+function stopPlayback() {
+  synth()?.cancel();
+  if (audio && !audio.paused) audio.pause();
+}
+
 export function stopSpeaking() {
   token++;
-  synth()?.cancel();
+  stopPlayback();
 }

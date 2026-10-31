@@ -289,6 +289,23 @@ button {
 }
 .tile:active { transform: translateY(4px) rotate(-3deg); box-shadow: 0 2px 0 var(--region-deep); }
 .tile-word { font-size: 1rem; font-weight: 500; }
+.tile.picked { background: #fff; outline: 5px solid var(--region-deep); outline-offset: -5px; transform: translateY(-4px); }
+
+.detail {
+  margin-top: 16px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  background: var(--region);
+  border-radius: 24px;
+  padding: 14px 18px;
+  box-shadow: 0 6px 0 var(--region-deep);
+}
+.detail-icon { flex-shrink: 0; animation: wiggle 1.4s ease-in-out 2; }
+.detail-text { font-size: clamp(1.05rem, 2.2vw, 1.3rem); line-height: 1.35; min-width: 0; }
+.detail-text strong { display: block; color: var(--region-deep); font-size: 1.15em; margin-bottom: 2px; }
 
 .capital-btn {
   margin-top: 16px;
