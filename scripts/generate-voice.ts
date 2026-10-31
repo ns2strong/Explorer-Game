@@ -152,5 +152,11 @@ async function main() {
 
 main().catch((e) => {
   console.error(e instanceof Error ? e.message : e);
+  if (e instanceof TypeError && /fetch failed/i.test(e.message) && (process.env.HTTPS_PROXY || process.env.https_proxy)) {
+    console.error('\nNode could not reach ElevenLabs. Behind a proxy, run with NODE_USE_ENV_PROXY=1 (Node 22.21 or newer).');
+  }
+  if (/voices_read/.test(String(e))) {
+    console.error('\nThis API key is restricted. Enable "Voices: Read" for it on elevenlabs.io, or find voice ids in the Voice Library instead.');
+  }
   process.exit(1);
 });
