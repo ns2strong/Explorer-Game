@@ -41,7 +41,7 @@ export const L = {
   capital: (s: UsState) => `The capital city of ${s.name} is ${s.capital}.`,
   wrongState: (s: UsState) => `That’s ${s.name}! Keep looking, you can do it!`,
   regionGood: (r: Region) => `${r.name}! Good thinking, {name}! Can you find it here?`,
-  regionWrong: (r: Region) => `${r.name}! Hmm, I don’t think it’s here. Tap the house to look somewhere else!`,
+  regionWrong: (r: Region) => `${r.name}? Hmm, it isn’t here. Let’s look somewhere else!`,
   passport: (n: number) => `{name}'s passport! You have ${stamps(n)}.`,
 };
 

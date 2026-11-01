@@ -9,6 +9,8 @@ interface Props {
   visited: Set<string>;
   /** FIPS codes to pulse as a hint. */
   glow: Set<string>;
+  /** FIPS codes ruled out during a mission: greyed and not tappable. */
+  ruledOut: Set<string>;
   /** A state that should do a happy bounce; `n` changes on every tap to replay it. */
   bounce: { fips: string; n: number } | null;
   onTap: (fips: string) => void;
@@ -45,7 +47,7 @@ function useAnimatedBox(target: Box, ms = 700): Box {
   return box;
 }
 
-export function USMap({ region, visited, glow, bounce, onTap }: Props) {
+export function USMap({ region, visited, glow, ruledOut, bounce, onTap }: Props) {
   const target = region ? REGION_BOX[region] : COUNTRY_BOX;
   const box = useAnimatedBox(target);
   // Icons should look about the same size on screen at any zoom level.
@@ -77,7 +79,9 @@ export function USMap({ region, visited, glow, bounce, onTap }: Props) {
           const classes = ['state'];
           // Alaska & Hawaii are drawn as insets; hide them when zoomed elsewhere so they don't look like neighbors.
           if (dimmed) classes.push(st.region === 'faraway' ? 'inset-hidden' : 'dimmed');
-          if (glow.has(shape.fips)) classes.push('glow');
+          const out = ruledOut.has(shape.fips);
+          if (out) classes.push('ruled-out');
+          else if (glow.has(shape.fips)) classes.push('glow');
           const bouncing = bounce?.fips === shape.fips;
           if (bouncing) classes.push('bounce');
           return (
@@ -85,7 +89,7 @@ export function USMap({ region, visited, glow, bounce, onTap }: Props) {
               key={bouncing ? `${shape.fips}-${bounce!.n}` : shape.fips}
               d={shape.d}
               className={classes.join(' ')}
-              fill={visited.has(st.code) ? r.deep : r.color}
+              fill={out ? '#c9ced6' : visited.has(st.code) ? r.deep : r.color}
               stroke="#fff"
               strokeWidth={1.2 * scale}
               strokeLinejoin="round"
@@ -102,7 +106,7 @@ export function USMap({ region, visited, glow, bounce, onTap }: Props) {
       <g>
         {TINY.map((fips) => {
           const st = STATE_BY_FIPS[fips];
-          if (region !== null && st.region !== region) return null;
+          if (ruledOut.has(fips) || (region !== null && st.region !== region)) return null;
           const [x, y] = iconPoint(fips);
           return (
             <circle key={fips} cx={x} cy={y} r={20 * scale} fill="transparent" onClick={() => onTap(fips)}>
@@ -116,7 +120,7 @@ export function USMap({ region, visited, glow, bounce, onTap }: Props) {
       <g pointerEvents="none">
         {SHAPES.map((shape) => {
           const st = STATE_BY_FIPS[shape.fips];
-          if (!st || !visited.has(st.code)) return null;
+          if (!st || !visited.has(st.code) || ruledOut.has(shape.fips)) return null;
           if (region !== null && st.region !== region) return null;
           const [x, y] = iconPoint(shape.fips);
           const fit = Math.min(shape.box[2], shape.box[3]) * 0.7;

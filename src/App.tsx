@@ -14,6 +14,8 @@ import { loadProgress, saveProgress, freshProgress, personalize, type Progress }
 import { say, stopSpeaking, unlockSpeech, setSpeechEnabled } from './lib/speech';
 import { sfx, unlockSound } from './lib/sound';
 
+const NONE: Set<string> = new Set();
+
 interface Celebration {
   key: number;
   icon: string;
@@ -32,6 +34,8 @@ export default function App() {
   const [passportOpen, setPassportOpen] = useState(false);
   const [mission, setMission] = useState<Mission | null>(null);
   const [misses, setMisses] = useState(0);
+  /** During a mission: states (FIPS) Ava already tried that aren't the answer. They grey out and can't be tapped again. */
+  const [ruledOut, setRuledOut] = useState<Set<string>>(() => new Set());
   const [celebrations, setCelebrations] = useState<Celebration[]>([]);
   const [line, setLine] = useState('');
   const [talking, setTalking] = useState(false);
@@ -190,6 +194,7 @@ export default function App() {
     const next = MISSIONS.find((m) => !progress.missionsDone.includes(m.id)) ?? MISSIONS[Math.floor(Math.random() * MISSIONS.length)];
     setMission(next);
     setMisses(0);
+    setRuledOut(new Set());
     setRegion(null);
     talk(next.ask);
   };
@@ -197,12 +202,14 @@ export default function App() {
   const cancelMission = () => {
     setMission(null);
     setMisses(0);
+    setRuledOut(new Set());
     talk(L.stopMission);
   };
 
   const winMission = (m: Mission, st: UsState) => {
     setMission(null);
     setMisses(0);
+    setRuledOut(new Set());
     openCard(st, false);
     updateProgress((p) => (p.missionsDone.includes(m.id) ? p : { ...p, missionsDone: [...p.missionsDone, m.id] }));
     setCelebrations((q) => [
@@ -216,20 +223,28 @@ export default function App() {
     [mission],
   );
 
+  /** Grey out states so Ava can't pick them again during this mission. */
+  const ruleOut = (fipsList: string[]) => setRuledOut((prev) => new Set([...prev, ...fipsList]));
+
   // ── Map taps ────────────────────────────────────────────────
   const zoomTo = (r: RegionId) => {
+    const reg = REGION_BY_ID[r];
+    if (mission && !missionRegions.has(r)) {
+      // Wrong region: don't go in. The whole region greys out so she looks somewhere else.
+      setMisses((n) => n + 1);
+      ruleOut(STATES.filter((s) => s.region === r).map((s) => s.fips));
+      sfx.hmm();
+      return talk(L.regionWrong(reg));
+    }
     sfx.zoom();
     setRegion(r);
-    const reg = REGION_BY_ID[r];
     if (!mission) return talk(reg.intro);
-    if (missionRegions.has(r)) return talk(L.regionGood(reg));
-    setMisses((n) => n + 1);
-    talk(L.regionWrong(reg));
+    talk(L.regionGood(reg));
   };
 
   const handleTap = ifFree((fips: string) => {
     const st = STATE_BY_FIPS[fips];
-    if (!st) return;
+    if (!st || (mission && ruledOut.has(fips))) return;
     setLastTouch(Date.now());
     setBounce({ fips, n: Date.now() });
     sfx.pop();
@@ -239,6 +254,7 @@ export default function App() {
     if (mission) {
       if (mission.targets.includes(st.code)) return winMission(mission, st);
       setMisses((n) => n + 1);
+      ruleOut([fips]);
       sfx.hmm();
       return talk(L.wrongState(st));
     }
@@ -261,7 +277,6 @@ export default function App() {
     return new Set(targets.filter((s) => s.region === region).map((s) => s.fips));
   }, [mission, misses, region, missionRegions]);
 
-  const wrongRegion = mission !== null && region !== null && !missionRegions.has(region);
 
   // ── Celebrations ────────────────────────────────────────────
   const current = celebrations[0];
@@ -334,7 +349,7 @@ export default function App() {
     <div className="app" onPointerDown={() => setLastTouch(Date.now())}>
       <header className="topbar">
         <button
-          className={`round-btn home ${region === null ? 'faded' : ''} ${wrongRegion ? 'pulse' : ''}`}
+          className={`round-btn home ${region === null ? 'faded' : ''}`}
           onClick={goHome}
           aria-label="Whole map"
         >
@@ -380,7 +395,7 @@ export default function App() {
       )}
 
       <main className="map-wrap">
-        <USMap region={region} visited={visited} glow={glow} bounce={bounce} onTap={handleTap} />
+        <USMap region={region} visited={visited} glow={glow} ruledOut={mission ? ruledOut : NONE} bounce={bounce} onTap={handleTap} />
       </main>
 
       <Mascot line={line} talking={talking} onReplay={ifFree(() => line && void narrate(line))} />
@@ -395,6 +410,7 @@ export default function App() {
           setProgress((p) => ({ ...freshProgress(p.playerName), voiceOn: p.voiceOn }));
           setCelebrations([]);
           setMission(null);
+          setRuledOut(new Set());
           setRegion(null);
         }}
       />

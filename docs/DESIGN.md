@@ -24,7 +24,7 @@ Version 1 covers the U.S. only; the data model is designed to extend to the worl
 ## Concept: Hybrid (free explore + missions)
 
 - **Free explore** — always available. Tap a colored region to zoom in; tap a state to open its picture card and hear a fun fact. Each first visit earns a stamp.
-- **Missions** — tap the ⭐. Finn asks a "find it" question with a big picture (🐊, 🗽, 🧤…). Finn hints which region to look in, and the answer glows after two misses.
+- **Missions** — tap the ⭐. Finn asks a "find it" question with a big picture (🐊, 🗽, 🧤…). Finn hints which region to look in. Wrong guesses are ruled out: tapping a wrong region greys out the whole region (the map stays zoomed out), and a wrong state greys out; greyed states can't be tapped again until the mission ends. The answer glows after two misses.
 
 ## Structure: zoom levels
 
