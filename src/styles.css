@@ -567,11 +567,10 @@ button {
 .special-detail { background: linear-gradient(135deg, #fff3b0, #ffd6e0); box-shadow: 0 6px 0 #e09f3e; }
 .special-detail .detail-text strong { color: #b5179e; }
 .card.busy .special-tile:not(.picked) { opacity: 0.4; filter: grayscale(0.5); animation: none; }
-.map-heart { animation: heart-glow 1.8s ease-in-out infinite; }
+.map-heart { animation: none; } /* fixed and still: no movement or fading */
 .stamp { position: relative; }
 .stamp-heart { position: absolute; top: -6px; right: -6px; font-size: 1rem; }
 @keyframes special-glow { 0%, 100% { box-shadow: 0 6px 0 #e09f3e, 0 0 0 0 rgba(246, 195, 67, 0.6); } 50% { box-shadow: 0 6px 0 #e09f3e, 0 0 0 8px rgba(246, 195, 67, 0); } }
-@keyframes heart-glow { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .special-box {
@@ -606,3 +605,4 @@ button {
 .rec-time { font-variant-numeric: tabular-nums; margin-left: 4px; }
 .rec-error { color: #c92a2a; font-size: 0.9rem; }
 .voice-tag { color: #b5179e; font-size: 0.85rem; white-space: nowrap; }
+.settings .version { font-variant-numeric: tabular-nums; }

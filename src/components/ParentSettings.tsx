@@ -127,6 +127,7 @@ export function ParentSettings({ playerName, voiceOn, onSave, onReset, special, 
             <p className="hint">
               Progress is saved on this device only. Tip: on iPad, tap Share → "Add to Home Screen" to play full-screen.
             </p>
+            <p className="hint version">Version: {__APP_BUILD__}</p>
             <div className="settings-actions">
               <button onClick={() => setStep('closed')}>{erased ? 'Close' : 'Cancel'}</button>
               <button
