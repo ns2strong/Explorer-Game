@@ -71,7 +71,9 @@ The game picks it up automatically.
 
 **Special places:** pick a state, a picture and a short message (e.g. Colorado, 🎂, "This is the
 place you were born!"). The state gets a heart on the map and a heart tile on its card that reads
-your message aloud (in the device's built-in voice). Special places are saved on the device only,
+your message aloud. Tap **⏺ Record** to say the message in your own voice (up to 20 seconds;
+▶ Listen, 🔁 Re-record or 🗑 Delete before saving); without a recording, the device's built-in
+voice reads it. Recording needs the microphone, so use Safari on the published game. Special places are saved on the device only,
 never in this repository or the website, and they're kept when you start over. Remove them one at a
 time, or press and hold "Hold to clear all special places".
 

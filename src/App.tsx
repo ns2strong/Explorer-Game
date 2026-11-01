@@ -14,6 +14,7 @@ import { loadProgress, saveProgress, freshProgress, personalize, type Progress }
 import { say, stopSpeaking, unlockSpeech, setSpeechEnabled } from './lib/speech';
 import { sfx, unlockSound } from './lib/sound';
 import { loadSpecial, saveSpecial, type SpecialPlaces } from './lib/special';
+import { loadVoice } from './lib/specialVoice';
 
 const NONE: Set<string> = new Set();
 
@@ -60,16 +61,41 @@ export default function App() {
   const specialRef = useRef(special);
   specialRef.current = special;
   const specialCodes = useMemo(() => new Set(Object.keys(special)), [special]);
+
+  /** Playable URLs for grown-ups' recordings, by state code. Reloaded when a recording changes. */
+  const [specialVoices, setSpecialVoices] = useState<Record<string, string>>({});
+  const voiceKey = Object.entries(special)
+    .filter(([, p]) => p.voice)
+    .map(([c, p]) => `${c}:${p.voice}`)
+    .join(',');
+  useEffect(() => {
+    let cancelled = false;
+    const urls: string[] = [];
+    void (async () => {
+      const out: Record<string, string> = {};
+      for (const pair of voiceKey ? voiceKey.split(',') : []) {
+        const code = pair.split(':')[0];
+        const blob = await loadVoice(code);
+        if (blob) urls.push((out[code] = URL.createObjectURL(blob)));
+      }
+      if (cancelled) urls.forEach((u) => URL.revokeObjectURL(u));
+      else setSpecialVoices(out);
+    })();
+    return () => {
+      cancelled = true;
+      urls.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [voiceKey]);
   useEffect(() => setSpeechEnabled(progress.voiceOn), [progress.voiceOn]);
 
   /** Finn says something: show it in the bubble and speak it. Resolves true if it played to the end. */
   const talk = useCallback(
-    (text: string): Promise<boolean> => {
+    (text: string, clipUrl?: string): Promise<boolean> => {
       const t = personalize(text, name);
       const id = ++talkId.current;
       setLine(t);
       setTalking(true);
-      return say(t).then((finished) => {
+      return say(t, clipUrl).then((finished) => {
         if (id === talkId.current) setTalking(false);
         return finished;
       });
@@ -91,7 +117,7 @@ export default function App() {
    * length of the line unlocks the game (and counts it as heard) so Ava never gets stuck.
    */
   const narrate = useCallback(
-    (text: string): Promise<boolean> => {
+    (text: string, clipUrl?: string): Promise<boolean> => {
       setBusyBoth(true);
       const limit = 2500 + text.length * 100;
       return new Promise<boolean>((resolve) => {
@@ -104,7 +130,7 @@ export default function App() {
           resolve(finished);
         };
         const timer = setTimeout(() => finish(true), limit);
-        void talk(text).then(finish);
+        void talk(text, clipUrl).then(finish);
       });
     },
     [talk],
@@ -191,9 +217,9 @@ export default function App() {
   });
 
   /** Replay a fact from a card or the passport (also locked until it finishes). */
-  const replayFact = ifFree((text: string): boolean => {
+  const replayFact = ifFree((text: string, clipUrl?: string): boolean => {
     sfx.pop();
-    void narrate(text);
+    void narrate(text, clipUrl);
     return true;
   });
 
@@ -439,7 +465,9 @@ export default function App() {
           onFact={() => replayFact(L.stateFact(card.state)) === true}
           onCapital={() => replayFact(L.capital(card.state)) === true}
           special={special[card.state.code]}
-          onSpecial={() => replayFact(personalize(special[card.state.code]?.note ?? '', name)) === true}
+          onSpecial={() =>
+            replayFact(personalize(special[card.state.code]?.note ?? '', name), specialVoices[card.state.code]) === true
+          }
           onClose={ifFree(() => {
             sfx.pop();
             setCard(null);

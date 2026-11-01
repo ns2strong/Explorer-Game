@@ -594,3 +594,13 @@ button {
 .icon-picker button { width: 44px; height: 44px; border-radius: 12px; background: #fff; font-size: 1.4rem; border: 2px solid transparent; }
 .icon-picker button.on { border-color: #e09f3e; background: #fff3b0; }
 .settings button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.recorder { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #fff; }
+.recorder-label { font-size: 0.95rem; }
+.recorder-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.recorder-row button { padding: 8px 12px; border-radius: 10px; background: #eef; font-size: 0.95rem; }
+.recorder-row .rec-btn { background: #ffe3e3; color: #c92a2a; font-weight: 700; }
+.recorder-row .rec-btn.recording { background: #fa5252; color: #fff; animation: pulse 1s ease-in-out infinite; }
+.rec-time { font-variant-numeric: tabular-nums; margin-left: 4px; }
+.rec-error { color: #c92a2a; font-size: 0.9rem; }
+.voice-tag { color: #b5179e; font-size: 0.85rem; white-space: nowrap; }

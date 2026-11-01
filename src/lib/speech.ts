@@ -125,11 +125,11 @@ function playClip(file: string, text: string, my: number): Promise<boolean> {
  * nothing to wait for), `false` if it was interrupted. (A clip cut off by
  * another line may never resolve.)
  */
-export function say(text: string): Promise<boolean> {
+export function say(text: string, clipUrl?: string): Promise<boolean> {
   const my = ++token;
   stopPlayback();
   if (!enabled) return Promise.resolve(true);
-  const file = CLIPS[clipKey(text)];
+  const file = clipUrl ?? CLIPS[clipKey(text)];
   return file ? playClip(file, text, my) : speakWithBrowser(text, my);
 }
 

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { STATES, STATE_BY_CODE } from '../data/states';
 import { NOTE_MAX, SPECIAL_ICONS, type SpecialPlaces } from '../lib/special';
+import { clearVoices, deleteVoice, loadVoice, saveVoice } from '../lib/specialVoice';
 import { HoldButton } from './HoldButton';
+import { VoiceRecorder } from './VoiceRecorder';
 
 interface Props {
   playerName: string;
@@ -10,7 +12,7 @@ interface Props {
   onChange: (places: SpecialPlaces) => void;
 }
 
-const blankForm = { code: '', icon: '❤️', note: '' };
+const blankForm = { code: '', icon: '❤️', note: '', voice: null as Blob | null };
 
 /** Grown-up editor for states with a personal meaning. Changes save immediately. */
 export function SpecialPlacesEditor({ playerName, places, onChange }: Props) {
@@ -21,25 +23,41 @@ export function SpecialPlacesEditor({ playerName, places, onChange }: Props) {
   const entries = Object.entries(places).sort(([a], [b]) => STATE_BY_CODE[a].name.localeCompare(STATE_BY_CODE[b].name));
   const canSave = form.code !== '' && form.note.trim() !== '';
 
-  const save = () => {
-    if (!canSave) return;
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!canSave || saving) return;
+    setSaving(true);
     const next = { ...places };
-    if (editing && editing !== form.code) delete next[editing];
-    next[form.code] = { icon: form.icon, note: form.note.trim().slice(0, NOTE_MAX) };
+    if (editing && editing !== form.code) {
+      delete next[editing];
+      await deleteVoice(editing);
+    }
+    // Keep the recording on this device; if it can't be stored, fall back to the built-in voice.
+    const stored = form.voice ? await saveVoice(form.code, form.voice) : (await deleteVoice(form.code), false);
+    next[form.code] = {
+      icon: form.icon,
+      note: form.note.trim().slice(0, NOTE_MAX),
+      ...(stored ? { voice: Date.now() } : {}),
+    };
     onChange(next);
     setForm(blankForm);
     setEditing(null);
     setCleared(false);
+    setSaving(false);
   };
 
-  const edit = (code: string) => {
+  const edit = async (code: string) => {
     setEditing(code);
-    setForm({ code, icon: places[code].icon, note: places[code].note });
+    setForm({ code, icon: places[code].icon, note: places[code].note, voice: null });
+    const voice = places[code].voice ? await loadVoice(code) : null;
+    if (voice) setForm((f) => (f.code === code ? { ...f, voice } : f));
   };
 
   const remove = (code: string) => {
     const next = { ...places };
     delete next[code];
+    void deleteVoice(code);
     onChange(next);
     if (editing === code) {
       setEditing(null);
@@ -64,6 +82,7 @@ export function SpecialPlacesEditor({ playerName, places, onChange }: Props) {
               </span>
               <span className="special-text">
                 <b>{STATE_BY_CODE[code].name}</b> {p.note}
+                {p.voice ? <span className="voice-tag"> 🎙️ your voice</span> : null}
               </span>
               <button onClick={() => edit(code)}>Edit</button>
               <button onClick={() => remove(code)} aria-label={`Remove ${STATE_BY_CODE[code].name}`}>
@@ -116,6 +135,8 @@ export function SpecialPlacesEditor({ playerName, places, onChange }: Props) {
           />
         </label>
 
+        <VoiceRecorder playerName={playerName} value={form.voice} onChange={(voice) => setForm((f) => ({ ...f, voice }))} />
+
         <div className="settings-actions">
           {editing && (
             <button
@@ -127,7 +148,7 @@ export function SpecialPlacesEditor({ playerName, places, onChange }: Props) {
               Cancel edit
             </button>
           )}
-          <button className="primary" disabled={!canSave} onClick={save}>
+          <button className="primary" disabled={!canSave || saving} onClick={() => void save()}>
             {editing ? 'Update place' : 'Add place'}
           </button>
         </div>
@@ -139,6 +160,7 @@ export function SpecialPlacesEditor({ playerName, places, onChange }: Props) {
             ms={3000}
             label="Hold to clear all special places"
             onDone={() => {
+              void clearVoices();
               onChange({});
               setCleared(true);
               setEditing(null);

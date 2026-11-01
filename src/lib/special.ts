@@ -12,6 +12,8 @@ export interface SpecialPlace {
   icon: string;
   /** The message read aloud, e.g. "This is the place you were born!" */
   note: string;
+  /** Set when a grown-up recorded the message (the time it was recorded); the audio lives in IndexedDB. */
+  voice?: number;
 }
 
 /** State code → special place. */
@@ -28,11 +30,12 @@ export function sanitizeSpecial(raw: unknown): SpecialPlaces {
   const out: SpecialPlaces = {};
   for (const [code, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!STATE_BY_CODE[code] || !value || typeof value !== 'object') continue;
-    const { icon, note } = value as Partial<SpecialPlace>;
+    const { icon, note, voice } = value as Partial<SpecialPlace>;
     if (typeof note !== 'string' || !note.trim()) continue;
     out[code] = {
       icon: typeof icon === 'string' && icon ? icon : '❤️',
       note: note.trim().slice(0, NOTE_MAX),
+      ...(typeof voice === 'number' && voice > 0 ? { voice } : {}),
     };
   }
   return out;

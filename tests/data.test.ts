@@ -107,3 +107,15 @@ describe('special places', () => {
     expect(sanitizeSpecial(null)).toEqual({});
   });
 });
+
+describe('special place recordings', () => {
+  it('keeps the voice marker only when it is a valid timestamp', async () => {
+    const { sanitizeSpecial } = await import('../src/lib/special');
+    const out = sanitizeSpecial({
+      CO: { icon: '🎂', note: 'Born here!', voice: 1730000000000 },
+      TX: { icon: '🏠', note: 'Home!', voice: 'yes' },
+    });
+    expect(out.CO.voice).toBe(1730000000000);
+    expect(out.TX.voice).toBeUndefined();
+  });
+});
