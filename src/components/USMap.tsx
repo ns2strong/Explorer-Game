@@ -11,6 +11,8 @@ interface Props {
   glow: Set<string>;
   /** FIPS codes ruled out during a mission: greyed and not tappable. */
   ruledOut: Set<string>;
+  /** State codes with a grown-up-entered special meaning: shown with a heart. */
+  special: Set<string>;
   /** A state that should do a happy bounce; `n` changes on every tap to replay it. */
   bounce: { fips: string; n: number } | null;
   onTap: (fips: string) => void;
@@ -47,7 +49,7 @@ function useAnimatedBox(target: Box, ms = 700): Box {
   return box;
 }
 
-export function USMap({ region, visited, glow, ruledOut, bounce, onTap }: Props) {
+export function USMap({ region, visited, glow, ruledOut, special, bounce, onTap }: Props) {
   const target = region ? REGION_BOX[region] : COUNTRY_BOX;
   const box = useAnimatedBox(target);
   // Icons should look about the same size on screen at any zoom level.
@@ -98,6 +100,23 @@ export function USMap({ region, visited, glow, ruledOut, bounce, onTap }: Props)
             >
               <title>{st.name}</title>
             </path>
+          );
+        })}
+      </g>
+
+      {/* Hearts on special places, nudged to the state's top-right so they don't cover its picture. */}
+      <g pointerEvents="none">
+        {SHAPES.map((shape) => {
+          const st = STATE_BY_FIPS[shape.fips];
+          if (!st || !special.has(st.code) || ruledOut.has(shape.fips)) return null;
+          if (region !== null && st.region !== region) return null;
+          const [x, y] = iconPoint(shape.fips);
+          const size = Math.max(14 * scale, 7);
+          const dx = Math.min(shape.box[2] * 0.3, 22 * scale);
+          return (
+            <text key={shape.fips} x={x + dx} y={y - size * 0.8} fontSize={size} textAnchor="middle" dominantBaseline="central" className="map-heart">
+              ❤️
+            </text>
           );
         })}
       </g>

@@ -1,11 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { makeGateQuestion, type GateQuestion } from '../lib/parentGate';
+import type { SpecialPlaces } from '../lib/special';
+import { HoldButton } from './HoldButton';
+import { SpecialPlacesEditor } from './SpecialPlacesEditor';
 
 interface Props {
   playerName: string;
   voiceOn: boolean;
   onSave: (name: string, voiceOn: boolean) => void;
   onReset: () => void;
+  special: SpecialPlaces;
+  onSpecialChange: (places: SpecialPlaces) => void;
 }
 
 const GEAR_HOLD_MS = 2000;
@@ -17,7 +22,7 @@ const ERASE_HOLD_MS = 3000;
  *   2. answer an addition question (Ava can't read or solve it yet),
  *   3. to erase progress, press and hold the erase button for 3 seconds.
  */
-export function ParentSettings({ playerName, voiceOn, onSave, onReset }: Props) {
+export function ParentSettings({ playerName, voiceOn, onSave, onReset, special, onSpecialChange }: Props) {
   const [step, setStep] = useState<'closed' | 'gate' | 'open'>('closed');
   const [holding, setHolding] = useState(false);
   const [question, setQuestion] = useState<GateQuestion>(() => makeGateQuestion());
@@ -99,7 +104,7 @@ export function ParentSettings({ playerName, voiceOn, onSave, onReset }: Props) 
             <div className="erase-box">
               <strong>Start over</strong>
               <span className="hint">
-                Erases {playerName}'s stamps, badges and missions. The name and voice setting stay.
+                Erases {playerName}'s stamps, badges and missions. The name, voice setting and special places stay.
               </span>
               {erased ? (
                 <p className="erased" role="status">
@@ -116,6 +121,8 @@ export function ParentSettings({ playerName, voiceOn, onSave, onReset }: Props) 
                 />
               )}
             </div>
+
+            <SpecialPlacesEditor playerName={playerName} places={special} onChange={onSpecialChange} />
 
             <p className="hint">
               Progress is saved on this device only. Tip: on iPad, tap Share → "Add to Home Screen" to play full-screen.
@@ -136,49 +143,5 @@ export function ParentSettings({ playerName, voiceOn, onSave, onReset }: Props) 
         </div>
       )}
     </>
-  );
-}
-
-/** A button that only fires after being held down for `ms`; letting go early cancels. */
-function HoldButton({ ms, label, onDone }: { ms: number; label: string; onDone: () => void }) {
-  const [progress, setProgress] = useState(0);
-  const raf = useRef(0);
-  const start = useRef(0);
-
-  const stop = () => {
-    cancelAnimationFrame(raf.current);
-    start.current = 0;
-    setProgress(0);
-  };
-  const begin = () => {
-    if (start.current) return;
-    start.current = performance.now();
-    const tick = (now: number) => {
-      const p = Math.min(1, (now - start.current) / ms);
-      setProgress(p);
-      if (p >= 1) {
-        start.current = 0;
-        onDone();
-      } else raf.current = requestAnimationFrame(tick);
-    };
-    raf.current = requestAnimationFrame(tick);
-  };
-  useEffect(() => () => cancelAnimationFrame(raf.current), []);
-
-  return (
-    <button
-      className={`hold-btn ${progress > 0 ? 'active' : ''}`}
-      onPointerDown={begin}
-      onPointerUp={stop}
-      onPointerLeave={stop}
-      onPointerCancel={stop}
-      onKeyDown={(e) => (e.key === ' ' || e.key === 'Enter') && !e.repeat && begin()}
-      onKeyUp={stop}
-      onContextMenu={(e) => e.preventDefault()}
-      style={{ ['--p' as string]: progress }}
-    >
-      <span className="hold-fill" aria-hidden="true" />
-      <span className="hold-label">{progress > 0 ? 'Keep holding…' : label}</span>
-    </button>
   );
 }

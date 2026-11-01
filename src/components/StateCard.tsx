@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Thing, UsState } from '../data/states';
+import type { SpecialPlace } from '../lib/special';
 import { REGION_BY_ID } from '../data/regions';
 import { L } from '../data/lines';
 import { SHAPE_BY_FIPS, padBox } from '../lib/geo';
@@ -24,17 +25,31 @@ interface Props {
   /** Replay the state's fact / say the capital. Return false if a fact is still playing. */
   onFact: () => boolean;
   onCapital: () => boolean;
+  /** A grown-up-entered special meaning for this state, if any. */
+  special?: SpecialPlace;
+  /** Read the special message. Returns false if a fact is still playing. */
+  onSpecial: () => boolean;
   onClose: () => void;
 }
 
-export function StateCard({ state, heard, stamped, justStamped, busy, nudge, onPick, onFact, onCapital, onClose }: Props) {
+export function StateCard({ state, heard, stamped, justStamped, busy, nudge, onPick, onFact, onCapital, special, onSpecial, onClose }: Props) {
   const region = REGION_BY_ID[state.region];
   const shape = SHAPE_BY_FIPS[state.fips];
   const vb = padBox(shape.box, 0.08);
   const [picked, setPicked] = useState<Thing | null>(null);
+  const [showSpecial, setShowSpecial] = useState(false);
 
   const pick = (t: Thing) => {
-    if (onPick(t)) setPicked(t);
+    if (onPick(t)) {
+      setPicked(t);
+      setShowSpecial(false);
+    }
+  };
+  const openSpecial = () => {
+    if (onSpecial()) {
+      setPicked(null);
+      setShowSpecial(true);
+    }
   };
   // Alternate between two identical animations so every nudge restarts the wiggle.
   const nudgeClass = nudge > 0 ? `nudge-${nudge % 2}` : '';
@@ -44,7 +59,7 @@ export function StateCard({ state, heard, stamped, justStamped, busy, nudge, onP
   return (
     <div className="overlay" onClick={onClose}>
       <div
-        className={`card pop-in ${busy ? 'busy' : ''}`}
+        className={`card pop-in ${busy ? 'busy' : ''} ${special ? 'special' : ''}`}
         style={{ ['--region' as string]: region.color, ['--region-deep' as string]: region.deep }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -53,9 +68,12 @@ export function StateCard({ state, heard, stamped, justStamped, busy, nudge, onP
         </button>
 
         <button
-          className={`card-hero ${busy && !picked ? nudgeClass : ''}`}
+          className={`card-hero ${busy && !picked && !showSpecial ? nudgeClass : ''}`}
           onClick={() => {
-            if (onFact()) setPicked(null);
+            if (onFact()) {
+              setPicked(null);
+              setShowSpecial(false);
+            }
           }}
           aria-label={`Hear about ${state.name}`}
         >
@@ -110,6 +128,32 @@ export function StateCard({ state, heard, stamped, justStamped, busy, nudge, onP
           ))}
         </div>
 
+        {special && (
+          <button
+            className={`special-tile ${showSpecial ? 'picked' : ''}`}
+            onClick={openSpecial}
+            aria-label={`Why ${state.name} is special`}
+            aria-pressed={showSpecial}
+          >
+            <span className="special-tile-icon" aria-hidden="true">
+              {special.icon}
+            </span>
+            <span className="special-tile-word">❤️ Special to you</span>
+          </button>
+        )}
+
+        {special && showSpecial && (
+          <button className={`detail special-detail pop-in ${busy ? nudgeClass : ''}`} onClick={openSpecial} aria-label="Hear why again">
+            <span className="detail-icon">
+              <Icon icon={special.icon} size="4.2rem" />
+            </span>
+            <span className="detail-text">
+              <strong>Special to you</strong>
+              {special.note} <span className="speaker">🔊</span>
+            </span>
+          </button>
+        )}
+
         {picked && (
           <button className={`detail pop-in ${busy ? nudgeClass : ''}`} key={picked.word} onClick={() => pick(picked)} aria-label={`Hear about ${picked.word} again`}>
             <span className="detail-icon">
@@ -125,7 +169,10 @@ export function StateCard({ state, heard, stamped, justStamped, busy, nudge, onP
         <button
           className="capital-btn"
           onClick={() => {
-            if (onCapital()) setPicked(null);
+            if (onCapital()) {
+              setPicked(null);
+              setShowSpecial(false);
+            }
           }}
         >
           ⭐ Capital: {state.capital}

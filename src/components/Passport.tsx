@@ -9,6 +9,8 @@ interface Props {
   playerName: string;
   visited: Set<string>;
   earned: Set<string>;
+  /** State codes that are special places (shown with a heart). */
+  special: Set<string>;
   /** A fact is playing: wait for it to finish. */
   busy: boolean;
   /** Speak a line; facts play to the end before anything else can. */
@@ -16,7 +18,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function Passport({ playerName, visited, earned, busy, speak, onClose }: Props) {
+export function Passport({ playerName, visited, earned, special, busy, speak, onClose }: Props) {
   return (
     <div className="overlay">
       <div className={`passport pop-in ${busy ? 'busy' : ''}`}>
@@ -70,6 +72,11 @@ export function Passport({ playerName, visited, earned, busy, speak, onClose }: 
                     >
                       {got ? <Icon icon={s.things[0].icon} size="1.9rem" /> : <span className="q">?</span>}
                       <span className="stamp-label">{got ? s.code : ''}</span>
+                      {special.has(s.code) && (
+                        <span className="stamp-heart" aria-label="special place">
+                          ❤️
+                        </span>
+                      )}
                     </button>
                   );
                 })}

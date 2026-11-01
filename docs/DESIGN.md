@@ -55,7 +55,9 @@ Three deliberate steps keep Ava out:
 2. Answer a random addition question (e.g. "What is 7 + 5?") from four number buttons. A wrong answer closes quietly.
 3. Settings: change the name, turn narration on/off. **Erasing progress** needs its own 3-second press-and-hold on a button that fills as you hold; letting go early cancels.
 
-Progress is stored only on the device (`localStorage`); there are no accounts and no data collection.
+**Special places** (also in settings): a grown-up picks a state, a picture and a message ("This is the place you were born!"). The state shows a heart on the map and in the passport; its card gets a golden border and a heart tile that reads the message, and Finn says "This state is special to you, Ava! Tap the heart to find out why!" Messages are typed on the device, so they're read by the built-in voice (Finn's lead-in is recorded). They're stored under their own key, separate from progress: "Start over" keeps them, and a separate hold-to-clear button removes them.
+
+Progress and special places are stored only on the device (`localStorage`); there are no accounts and no data collection, and nothing personal goes into the public repository or website.
 
 ## Tech
 

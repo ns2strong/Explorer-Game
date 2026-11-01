@@ -69,6 +69,12 @@ The game picks it up automatically.
 2. Answer the addition question (Ava can't read it or solve it yet; a wrong answer just closes it).
 3. Change the player's name or turn narration on/off, then tap Save.
 
+**Special places:** pick a state, a picture and a short message (e.g. Colorado, 🎂, "This is the
+place you were born!"). The state gets a heart on the map and a heart tile on its card that reads
+your message aloud (in the device's built-in voice). Special places are saved on the device only,
+never in this repository or the website, and they're kept when you start over. Remove them one at a
+time, or press and hold "Hold to clear all special places".
+
 To start over, press and hold **"Hold to erase Ava's progress"** for 3 seconds. Letting go early
 cancels. This erases stamps, badges and missions; the name and voice setting stay.
 Progress is saved on the device only.

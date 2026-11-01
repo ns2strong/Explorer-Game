@@ -13,6 +13,7 @@ import { L } from './data/lines';
 import { loadProgress, saveProgress, freshProgress, personalize, type Progress } from './lib/progress';
 import { say, stopSpeaking, unlockSpeech, setSpeechEnabled } from './lib/speech';
 import { sfx, unlockSound } from './lib/sound';
+import { loadSpecial, saveSpecial, type SpecialPlaces } from './lib/special';
 
 const NONE: Set<string> = new Set();
 
@@ -27,6 +28,8 @@ interface Celebration {
 
 export default function App() {
   const [progress, setProgress] = useState<Progress>(loadProgress);
+  /** Grown-up-entered special places: saved separately from progress, so starting over keeps them. */
+  const [special, setSpecial] = useState<SpecialPlaces>(loadSpecial);
   const [started, setStarted] = useState(false);
   const [region, setRegion] = useState<RegionId | null>(null);
   /** The open state card. `justStamped` plays the stamp animation when the last picture fact is heard. */
@@ -53,6 +56,10 @@ export default function App() {
   const earned = useMemo(() => new Set(progress.achievements), [progress.achievements]);
 
   useEffect(() => saveProgress(progress), [progress]);
+  useEffect(() => saveSpecial(special), [special]);
+  const specialRef = useRef(special);
+  specialRef.current = special;
+  const specialCodes = useMemo(() => new Set(Object.keys(special)), [special]);
   useEffect(() => setSpeechEnabled(progress.voiceOn), [progress.voiceOn]);
 
   /** Finn says something: show it in the bubble and speak it. Resolves true if it played to the end. */
@@ -149,7 +156,9 @@ export default function App() {
       setCard({ state: st, justStamped: false });
       if (speak)
         void narrate(L.stateFact(st)).then((finished) => {
-          if (finished && needsStampHint(st)) void talk(L.stampHint);
+          if (!finished || cardRef.current?.state !== st) return;
+          if (specialRef.current[st.code]) void talk(L.specialHint);
+          else if (needsStampHint(st)) void talk(L.stampHint);
         });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -294,7 +303,8 @@ export default function App() {
     if (celebrations.length === 1 && current?.urgent) {
       // After a mission win the state card is open: explain the stamp if it isn't earned yet.
       const st = cardRef.current?.state;
-      setTimeout(() => void talk(st && needsStampHint(st) ? L.stampHint : L.anotherMission), 200);
+      const next = st && specialRef.current[st.code] ? L.specialHint : st && needsStampHint(st) ? L.stampHint : L.anotherMission;
+      setTimeout(() => void talk(next), 200);
     }
     setCelebrations((q) => q.slice(1));
   };
@@ -395,7 +405,7 @@ export default function App() {
       )}
 
       <main className="map-wrap">
-        <USMap region={region} visited={visited} glow={glow} ruledOut={mission ? ruledOut : NONE} bounce={bounce} onTap={handleTap} />
+        <USMap region={region} visited={visited} glow={glow} ruledOut={mission ? ruledOut : NONE} special={specialCodes} bounce={bounce} onTap={handleTap} />
       </main>
 
       <Mascot line={line} talking={talking} onReplay={ifFree(() => line && void narrate(line))} />
@@ -404,6 +414,8 @@ export default function App() {
         playerName={name}
         voiceOn={progress.voiceOn}
         onSave={(n, v) => setProgress((p) => ({ ...p, playerName: n, voiceOn: v }))}
+        special={special}
+        onSpecialChange={setSpecial}
         onReset={() => {
           stopSpeaking();
           setBusyBoth(false);
@@ -426,6 +438,8 @@ export default function App() {
           onPick={(t) => hearThing(card.state, t) === true}
           onFact={() => replayFact(L.stateFact(card.state)) === true}
           onCapital={() => replayFact(L.capital(card.state)) === true}
+          special={special[card.state.code]}
+          onSpecial={() => replayFact(personalize(special[card.state.code]?.note ?? '', name)) === true}
           onClose={ifFree(() => {
             sfx.pop();
             setCard(null);
@@ -440,6 +454,7 @@ export default function App() {
           playerName={name}
           visited={visited}
           earned={earned}
+          special={specialCodes}
           busy={busy}
           speak={(text) => void replayFact(text)}
           onClose={ifFree(() => {

@@ -89,3 +89,21 @@ describe('grown-up gate', () => {
     }
   });
 });
+
+describe('special places', () => {
+  it('keeps only well-formed entries for real states and trims long notes', async () => {
+    const { sanitizeSpecial, NOTE_MAX } = await import('../src/lib/special');
+    const out = sanitizeSpecial({
+      CO: { icon: '🎂', note: '  This is the place you were born!  ' },
+      XX: { icon: '❤️', note: 'not a state' },
+      TX: { icon: '🏠', note: '   ' },
+      FL: { note: 'x'.repeat(500) },
+      NY: 'bad',
+    });
+    expect(Object.keys(out).sort()).toEqual(['CO', 'FL']);
+    expect(out.CO).toEqual({ icon: '🎂', note: 'This is the place you were born!' });
+    expect(out.FL.icon).toBe('❤️');
+    expect(out.FL.note.length).toBe(NOTE_MAX);
+    expect(sanitizeSpecial(null)).toEqual({});
+  });
+});
