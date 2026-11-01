@@ -104,7 +104,10 @@ export function USMap({ region, visited, glow, ruledOut, special, bounce, onTap 
         })}
       </g>
 
-      {/* Hearts on special places, nudged to the state's top-right so they don't cover its picture. */}
+      {/*
+        Hearts on special places. The position is measured from the state's own shape only
+        (up and to the right of its picture spot), so the heart stays put at every zoom level.
+      */}
       <g pointerEvents="none">
         {SHAPES.map((shape) => {
           const st = STATE_BY_FIPS[shape.fips];
@@ -112,9 +115,10 @@ export function USMap({ region, visited, glow, ruledOut, special, bounce, onTap 
           if (region !== null && st.region !== region) return null;
           const [x, y] = iconPoint(shape.fips);
           const size = Math.max(14 * scale, 7);
-          const dx = Math.min(shape.box[2] * 0.3, 22 * scale);
+          const hx = x + shape.box[2] * 0.22;
+          const hy = y - shape.box[3] * 0.22;
           return (
-            <text key={shape.fips} x={x + dx} y={y - size * 0.8} fontSize={size} textAnchor="middle" dominantBaseline="central" className="map-heart">
+            <text key={shape.fips} x={hx} y={hy} fontSize={size} textAnchor="middle" dominantBaseline="central" className="map-heart">
               ❤️
             </text>
           );
